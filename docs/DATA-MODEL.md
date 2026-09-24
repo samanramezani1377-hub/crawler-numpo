@@ -217,3 +217,104 @@ Signals / Classifications:
 - Active دارای شمارهٔ عمومی
 
 Routing Rule فقط تعیین می‌کند Candidate به کدام مرحلهٔ بعدی برود؛ Routing نباید Domain را حذف کند.
+
+
+## موجودیت‌های Queue و Probe
+
+برای پشتیبانی از چرخهٔ «Deep Crawler → Discovery → Active Probe → Deep Search» وضعیت صف و وضعیت Probe باید از خود Domain جدا باشد.
+
+### Domain Probe
+
+برای هر Domain/Host یک وضعیت قابل Query برای آخرین Probe نگهداری می‌شود:
+
+- id
+- domain_id
+- host
+- status
+- probe_version
+- dns_status
+- http_status
+- https_status
+- redirect_target
+- response_time_ms
+- last_probe_at
+- expires_at
+- error_code
+- error_message
+
+مقادیر نمونهٔ `status`:
+
+- not_checked
+- queued
+- checking
+- active
+- inactive
+- error
+
+این موجودیت نتیجهٔ آخرین Probe را نگه می‌دارد؛ در صورت نیاز به Audit کامل، تاریخچهٔ Observationها باید در موجودیت جداگانه ذخیره شود.
+
+### Discovery Candidate و Queue State
+
+Candidate باید وضعیت پردازش خود را طوری نگه دارد که معلوم باشد به کدام مرحله ارسال شده است.
+
+فیلدهای تکمیلی پیشنهادی:
+
+- normalized_host
+- discovered_from
+- queue_type
+- queued_at
+- processing_started_at
+- completed_at
+- last_error
+- attempt_count
+
+مقادیر نمونهٔ `queue_type`:
+
+- discovery
+- active_probe
+- deep_crawl
+
+### قاعدهٔ Deduplication
+
+قبل از ایجاد Queue Item جدید باید به‌صورت اتمیک بررسی شود:
+
+```text
+URL جدید
+  ↓
+Normalize
+  ↓
+URL Dedup
+  ↓
+Extract Host
+  ↓
+Probe State Lookup
+```
+
+اگر Probe معتبر وجود داشته باشد، Active Queue دوباره ساخته نمی‌شود.
+
+اگر Probe وجود نداشته یا منقضی شده باشد، Candidate می‌تواند Active Queue دریافت کند.
+
+این قاعده باید در سطح Database/Queue نیز قابل تضمین باشد تا دو Worker هم‌زمان یک Probe تکراری برای یک Host ایجاد نکنند.
+
+### تفکیک Domain، Host و URL
+
+- **Domain** موجودیت پایدار و اصلی است.
+- **Host** برای تصمیم‌های شبکه‌ای و Probe مهم است؛ به‌خصوص وقتی Subdomainها مجاز باشند.
+- **URL** واحد اصلی Deep Crawl است.
+
+بنابراین یک Domain می‌تواند چند Host و هر Host می‌تواند چند URL داشته باشد.
+
+مثال:
+
+```text
+example.com
+├── example.com
+│   ├── /
+│   ├── /about
+│   └── /products
+└── shop.example.com
+    ├── /
+    └── /product/1
+```
+
+این تفکیک باید قبل از پیاده‌سازی Queue نهایی شود تا Subdomain و Scope رفتار مبهم نداشته باشند.
