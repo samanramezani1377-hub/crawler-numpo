@@ -11,7 +11,7 @@ add_action('wp_ajax_numpo_admin_create',function(){
  $limits=json_decode(wp_unslash($_POST['limits']??'{}'),true);
  $caps=json_decode(wp_unslash($_POST['capabilities']??'{}'),true);
  $body=['project_id'=>sanitize_text_field(wp_unslash($_POST['project_id']??'')),'mode'=>sanitize_key($_POST['mode']??'manual'),'seeds'=>is_array($seeds)?array_values($seeds):[],'sources'=>is_array($sources)?$sources:[],'target'=>is_array($target)?$target:[],'limits'=>is_array($limits)?$limits:[]];
- if(is_array($caps))$body['sources']=array_merge($body['sources'],$caps);
+ if(is_array($caps))$body['capabilities']=$caps;
  $req=new WP_REST_Request('POST','/numpo/v1/jobs');$req->set_body_params($body);
  $r=Numpo_API::create($req);
  if(is_wp_error($r))wp_send_json_error($r->get_error_message(),$r->get_error_data()['status']??500);
