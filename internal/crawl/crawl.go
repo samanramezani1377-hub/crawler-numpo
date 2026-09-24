@@ -1,11 +1,45 @@
 package crawl
 
-import("context";"io";"net/http";"net/url";"strings";"time";"golang.org/x/net/html";"github.com/samanramezani1377-hub/crawler-numpo/internal/policy")
+import(
+ "context"
+ "io"
+ "net/http"
+ "net/url"
+ "strings"
+ "time"
+ "golang.org/x/net/html"
+ "github.com/samanramezani1377-hub/crawler-numpo/internal/policy"
+)
 
 type Page struct{URL string;Status int;Title string;ContentType string;Links []string;Body string}
 type Crawler struct{Client *http.Client;MaxBytes int64;MaxLinks int}
-func New(timeout time.Duration,maxBytes int64)*Crawler{return &Crawler{Client:&http.Client{Timeout:timeout,CheckRedirect:func(r *http.Request,v []*http.Request)error{if len(v)>=3{return http.ErrUseLastResponse};return nil}},MaxBytes:maxBytes,MaxLinks:50}}
-func(c *Crawler)Fetch(ctx context.Context,raw string)(Page,error){if e:=policy.ValidateURL(raw);e!=nil{return Page{},e};req,e:=http.NewRequestWithContext(ctx,http.MethodGet,raw,nil);if e!=nil{return Page{},e};resp,e:=c.Client.Do(req);if e!=nil{return Page{},e};defer resp.Body.Close();b,e:=io.ReadAll(io.LimitReader(resp.Body,c.MaxBytes+1));if e!=nil{return Page{},e};if int64(len(b))>c.MaxBytes{return Page{},&LimitError{}};p:=Page{URL:resp.Request.URL.String(),Status:resp.StatusCode,ContentType:resp.Header.Get("Content-Type"),Body:string(b)};if strings.Contains(strings.ToLower(p.ContentType),"text/html"){p.Title,p.Links=ParseHTML(resp.Request.URL,string(b),c.MaxLinks)};return p,nil}
+
+func New(timeout time.Duration,maxBytes int64)*Crawler{
+ return &Crawler{Client:&http.Client{Timeout:timeout,CheckRedirect:func(r *http.Request,v []*http.Request)error{
+  if len(v)>=3{return http.ErrUseLastResponse}
+  if r.URL.Scheme!="http"&&r.URL.Scheme!="https"{return http.ErrUseLastResponse}
+  if policy.ValidateURL(r.URL.String())!=nil{return http.ErrUseLastResponse}
+  return nil
+ }},MaxBytes:maxBytes,MaxLinks:50}
+}
+func(c *Crawler)Fetch(ctx context.Context,raw string)(Page,error){
+ if e:=policy.ValidateURL(raw);e!=nil{return Page{},e}
+ req,e:=http.NewRequestWithContext(ctx,http.MethodGet,raw,nil);if e!=nil{return Page{},e}
+ resp,e:=c.Client.Do(req);if e!=nil{return Page{},e};defer resp.Body.Close()
+ b,e:=io.ReadAll(io.LimitReader(resp.Body,c.MaxBytes+1));if e!=nil{return Page{},e}
+ if int64(len(b))>c.MaxBytes{return Page{},&LimitError{}}
+ p:=Page{URL:resp.Request.URL.String(),Status:resp.StatusCode,ContentType:resp.Header.Get("Content-Type"),Body:string(b)}
+ if strings.Contains(strings.ToLower(p.ContentType),"text/html"){p.Title,p.Links=ParseHTML(resp.Request.URL,string(b),c.MaxLinks)}
+ return p,nil
+}
 type LimitError struct{};func(*LimitError)Error()string{return "response size limit exceeded"}
-func ParseHTML(base *url.URL,body string,max int)(string,[]string){doc,e:=html.Parse(strings.NewReader(body));if e!=nil{return "",nil};var title string;var links []string;var walk func(*html.Node);walk=func(n *html.Node){if n.Type==html.ElementNode&&n.Data=="title"&&n.FirstChild!=nil{title=strings.TrimSpace(n.FirstChild.Data)};if n.Type==html.ElementNode&&(n.Data=="a"||n.Data=="link"){for _,a:=range n.Attr{if a.Key=="href"{if u,e:=base.Parse(strings.TrimSpace(a.Val));e==nil&&(u.Scheme=="http"||u.Scheme=="https"){u.Fragment="";links=append(links,u.String())};break}}};for ch:=n.FirstChild;ch!=nil;ch=ch.NextSibling{if len(links)<max{walk(ch)}}};walk(doc);return title,unique(links)}
+func ParseHTML(base *url.URL,body string,max int)(string,[]string){
+ doc,e:=html.Parse(strings.NewReader(body));if e!=nil{return "",nil};var title string;var links []string
+ var walk func(*html.Node);walk=func(n *html.Node){
+  if n.Type==html.ElementNode&&n.Data=="title"&&n.FirstChild!=nil{title=strings.TrimSpace(n.FirstChild.Data)}
+  if n.Type==html.ElementNode&&(n.Data=="a"||n.Data=="link"){for _,a:=range n.Attr{if a.Key=="href"{if u,e:=base.Parse(strings.TrimSpace(a.Val));e==nil&&(u.Scheme=="http"||u.Scheme=="https"){u.Fragment="";links=append(links,u.String())};break}}}
+  for ch:=n.FirstChild;ch!=nil&&len(links)<max;ch=ch.NextSibling{walk(ch)}
+ }
+ walk(doc);return title,unique(links)
+}
 func unique(in []string)[]string{m:=map[string]bool{};out:=make([]string,0,len(in));for _,v:=range in{if !m[v]{m[v]=true;out=append(out,v)}};return out}
