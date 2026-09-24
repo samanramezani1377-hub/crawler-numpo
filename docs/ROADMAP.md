@@ -170,9 +170,22 @@
 - [x] Effective capability snapshot
 - [x] Extraction persistence for page/business/social data
 - [ ] Full E2E API-to-persistence test
-- [ ] Security hardening suite for DNS rebinding/IPv6/redirects
-- [ ] Global cross-worker domain rate limiter
-- [ ] HTTP-date Retry-After support
-- [ ] Production queue metrics and dead-letter handling
-- [ ] Browser worker / JS rendering
+- [x] Security hardening suite for IPv4/IPv6/local/reserved targets and protected dialing
+- [x] Global cross-worker domain rate limiter
+- [x] HTTP-date Retry-After support
+- [x] Production queue metrics and dead-letter handling
+- [x] Browser renderer interface and explicit disabled fallback; [ ] Chromium/Playwright worker
 - [ ] Full WordPress project/domain/results dashboard
+
+## وضعیت پس از سخت‌سازی Production
+
+- [x] WordPress plugin PHPUnit + real WordPress/MySQL CI
+- [x] Installable WordPress plugin ZIP artifact after passing tests
+- [x] Prometheus-compatible runtime metrics endpoint
+- [x] Retry backoff with jitter
+- [x] SSRF tests for IPv4/IPv6/local/reserved targets
+- [x] Optional browser renderer interface without coupling Crawl Core to a browser SDK
+- [ ] Real Chromium/Playwright browser worker
+- [ ] Full API→DB→queue→probe→routing→crawl→extract→persist→API E2E scenario
+- [ ] Search provider adapters beyond configurable HTTP template
+- [ ] Complete WordPress results dashboard
