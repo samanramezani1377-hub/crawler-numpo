@@ -123,13 +123,62 @@ GET /api/v1/health
 
 ## Discovery API
 
-Discovery از Crawl جداست و API مستقل خواهد داشت:
+Discovery از Crawl جداست و API مستقل دارد:
 
 - `POST /api/v1/discovery/jobs`
 - `GET /api/v1/discovery/jobs/{job_id}`
 - `GET /api/v1/discovery/jobs/{job_id}/candidates`
 - `POST /api/v1/discovery/jobs/{job_id}/cancel`
 
-Candidateهای Discovery باید Source و Provenance خود را حفظ کنند. Search Provider فقط Candidate تولید می‌کند و تشخیص نهایی فناوری یا اطلاعات تماس باید توسط Crawl/Detector انجام شود.
+### حالت Discovery
 
-برای جزئیات معماری به [DISCOVERY](DISCOVERY.md) مراجعه کنید.
+هر Discovery Job یکی از این حالت‌ها را دارد:
+
+- `manual` — دریافت دامنه/URL اولیه از کاربر
+- `automatic` — تولید Candidate از منابع Discovery فعال
+- `hybrid` — ترکیب ورودی دستی و منابع خودکار
+
+نمونهٔ درخواست پیشنهادی:
+
+```json
+{
+  "project_id": "project-123",
+  "mode": "hybrid",
+  "seeds": ["example.com", "https://shop.example.com"],
+  "sources": {
+    "search_provider": true,
+    "sitemap": true,
+    "robots": true,
+    "link_discovery": true,
+    "subdomain_from_crawl": true
+  },
+  "target": {
+    "technologies": ["wordpress", "woocommerce"],
+    "country": "IR",
+    "has_public_phone": true
+  }
+}
+```
+
+در حالت `manual`، `seeds` مستقیماً وارد Candidate Store می‌شوند و فعال بودن Search Provider الزامی نیست. در حالت `automatic`، منابع فعال Candidate تولید می‌کنند. در حالت `hybrid` هر دو جریان وارد Candidate Store مشترک می‌شوند و Deduplication مشترک دارند.
+
+`mode` نحوهٔ ورود Candidate را مشخص می‌کند؛ Queue type مانند `discovery`، `active_probe` و `deep_crawl` مرحلهٔ پردازش را مشخص می‌کند و این دو مفهوم نباید در API یکی شوند.
+
+### Capabilityهای پردازشی
+
+Capabilityهای سطح محصول باید جدا از منابع Discovery مدیریت شوند، از جمله:
+
+- `active_probe.enabled`
+- `deep_crawl.enabled`
+- `detection.wordpress.enabled`
+- `detection.woocommerce.enabled`
+- `extraction.phone.enabled`
+- `extraction.email.enabled`
+- `extraction.business.enabled`
+- `extraction.social.enabled`
+- `page_classification.enabled`
+- `browser_render.enabled`
+
+جزئیات معماری و مرز Capabilityها در [DISCOVERY](DISCOVERY.md) و [ARCHITECTURE](ARCHITECTURE.md) تعریف شده است.
+
+Candidateهای Discovery باید Source و Provenance خود را حفظ کنند. Search Provider فقط Candidate تولید می‌کند و تشخیص نهایی فناوری یا اطلاعات تماس باید توسط Crawl/Detector انجام شود.
