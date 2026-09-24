@@ -345,3 +345,89 @@ Discovery
 منابع Discovery می‌توانند Manual Seed، Seed List/CSV، Search Provider، Sitemap/robots.txt و لینک‌های کشف‌شده در Crawl باشند. Search Providerها باید پشت Interface مستقل قرار بگیرند تا وابستگی به یک سرویس خاص ایجاد نشود.
 
 هر Candidate باید Provenance داشته باشد و پیش از ورود به Queue از Normalize، Deduplicate و Policy/SSRF checks عبور کند. Classificationها باید مستقل و چندگانه باشند و Routing Rule فقط مسیر پردازش بعدی را تعیین کند، نه اینکه Candidate را از داده‌های اصلی حذف کند. جزئیات در [DISCOVERY](DISCOVERY.md) آمده است.
+
+
+## ۱۵. حلقهٔ کنترل‌شدهٔ Discovery و Deep Crawl
+
+Deep Crawler یکی از منابع Discovery است. هر URL یا Host جدیدی که در Deep Crawl کشف شود نباید مستقیماً یک Crawl مستقل ایجاد کند.
+
+جریان استاندارد:
+
+```text
+Deep Crawler
+     ↓
+Discovered URL
+     ↓
+Normalize / Deduplicate / Policy
+     ↓
+Probe State
+   ┌─┴──────────────┐
+   │                │
+Already Probed   Not Probed
+   │                │
+   ▼                ▼
+Routing         Active Queue
+   │                │
+   │                ▼
+   │            Active Probe
+   │                │
+   └───────┬────────┘
+           ▼
+   Classification
+           ↓
+      Routing Rule
+           ↓
+       Deep Queue
+           ↓
+      Deep Crawler
+```
+
+### Queueهای منطقی
+
+در معماری، حداقل سه نوع کار باید از هم قابل تشخیص باشند:
+
+- `discovery`
+- `active_probe`
+- `deep_crawl`
+
+در MVP می‌توان این‌ها را روی یک Queue backend اجرا کرد، اما Worker و Scheduler باید نوع کار را بشناسند تا بعداً امکان جداسازی Queueها بدون بازطراحی Pipeline وجود داشته باشد.
+
+### استفادهٔ مجدد از Probe
+
+اگر Deep Crawler به Hostی برسد که Probe معتبر دارد، Probe نباید دوباره اجرا شود. نتیجهٔ آخرین Probe و Signalهای معتبر برای Routing استفاده می‌شوند.
+
+اگر Probe وجود نداشته باشد یا TTL آن منقضی شده باشد، Host وارد Active Queue می‌شود.
+
+### Domain، Host و URL
+
+معماری باید این سه سطح را از هم جدا نگه دارد:
+
+```text
+Domain
+  ↓
+Host
+  ↓
+URL
+```
+
+Active Probe عمدتاً در سطح Host انجام می‌شود؛ Deep Crawl در سطح URL انجام می‌شود و Domain موجودیت پایدار برای گزارش و Query است.
+
+این تفکیک به‌خصوص برای Subdomainها ضروری است.
+
+### جلوگیری از حلقهٔ نامحدود
+
+چون Deep Crawl می‌تواند Discovery جدید تولید کند، Crawl Budget و Deduplication باید روی حلقهٔ زیر اعمال شوند:
+
+```text
+Deep Crawl
+   ↓
+Discovery
+   ↓
+Active Probe
+   ↓
+Routing
+   ↓
+Deep Crawl
+```
+
+این حلقه باید **کنترل‌شده و محدود** باشد و هر Job دارای سقف URL، عمق، Candidate و زمان اجرای مشخص باشد.
