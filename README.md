@@ -113,7 +113,9 @@ HTTP غیرهمزمان روش پیش‌فرض است.
 
 ## وضعیت فعلی
 
-پروژه در مرحلهٔ مستندسازی و طراحی معماری است و پیاده‌سازی بعد از نهایی شدن معماری شروع می‌شود.
+MVP پیاده‌سازی شده است: پلاگین WordPress کنترل‌پلین، Go Engine، API نسخه‌بندی‌شده، PostgreSQL schema، نرمال‌سازی URL، SSRF policy، Candidate Store با dedup اتمیک، Active Probe، Discovery Providerهای Sitemap/Robots، Deep Crawl محدود، تشخیص اولیه WordPress/WooCommerce و استخراج عمومی Email/Phone در مخزن قرار گرفته‌اند.
+
+CI شامل `go test ./...` و `go vet ./...` است. اجرای تست در محیط توسعه فعلی به‌دلیل نبود دسترسی شبکه برای دریافت dependencyهای Go قابل انجام نبود و هیچ تستی bypass نشده است.
 
 ## مستندات
 
