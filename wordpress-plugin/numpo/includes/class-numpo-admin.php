@@ -3,27 +3,94 @@ if(!defined('ABSPATH')) exit;
 class Numpo_Admin {
  public static function init(){add_action('admin_menu',[__CLASS__,'menu']);add_action('admin_post_numpo_save',[__CLASS__,'save']);require_once NUMPO_DIR.'includes/class-numpo-ajax.php';}
  public static function menu(){add_menu_page('Numpo','Numpo','manage_options','numpo',[__CLASS__,'page'],'dashicons-search',58);add_submenu_page('numpo','Settings','Settings','manage_options','numpo-settings',[__CLASS__,'settings']);}
+ private static function capChecks(){
+  $caps=['active_probe'=>'Active Probe','deep_crawl'=>'Deep Crawl','link_discovery'=>'Link discovery','sitemap'=>'Sitemap','robots'=>'robots.txt','subdomain_from_crawl'=>'Subdomain discovery','wordpress'=>'WordPress detection','woocommerce'=>'WooCommerce detection','phone'=>'Phone extraction','email'=>'Email extraction','business'=>'Business extraction','social'=>'Social extraction','page_classification'=>'Page classification'];
+  $html='';
+  foreach($caps as $key=>$label){$html.='<label style="display:inline-block;min-width:230px;margin:4px 12px 4px 0;"><input type="checkbox" name="cap_'.$key.'" value="1" '.checked(Numpo_Settings::cap($key,true),true,false).'> '.esc_html($label).'</label>';}
+  return $html;
+ }
  public static function page(){if(!current_user_can('manage_options'))return;?>
- <div class="wrap"><h1>Numpo</h1><p>Discovery control plane</p><form id="numpo-form">
- <p><label>Project ID<br><input name="project_id" class="regular-text" required></label></p>
- <p><label>Mode<br><select name="mode"><option value="manual">Manual</option><option value="hybrid">Hybrid</option><option value="automatic">Automatic</option></select></label></p>
- <p><label>Seeds / domains<br><textarea name="seeds" rows="7" class="large-text"></textarea></label></p>
- <fieldset><legend><strong>Discovery sources</strong></legend>
- <label><input type="checkbox" name="source_search" value="1"> Search provider</label><br>
- <label><input type="checkbox" name="source_sitemap" value="1"> Sitemap</label><br>
- <label><input type="checkbox" name="source_robots" value="1"> robots.txt</label><br>
- <label><input type="checkbox" name="source_links" value="1"> Link discovery</label><br>
- <label><input type="checkbox" name="source_subdomains" value="1"> Subdomain discovery</label>
- </fieldset>
- <fieldset style="margin-top:16px;padding:10px 12px;"><legend><strong>Target filters</strong></legend>
- <p><label>Country / TLD<br><select name="target_country"><option value="">Any country / TLD</option><option value="ir">Iran (.ir)</option><option value="nl">Netherlands (.nl)</option><option value="us">United States (.us)</option><option value="de">Germany (.de)</option><option value="uk">United Kingdom (.uk)</option><option value="fr">France (.fr)</option><option value="tr">Turkey (.tr)</option></select></label></p>
- <p class="description">This is an additional target filter. It does not replace seeds or discovery sources. Country matching uses the domain TLD and available language signals.</p>
- </fieldset>
- <p><button class="button button-primary">Start discovery</button></p></form><pre id="numpo-result"></pre></div>
+ <div class="wrap">
+  <h1>Numpo Discovery</h1>
+  <p>ایجاد، پایش و بررسی Jobهای Discovery از یک صفحه.</p>
+  <form id="numpo-form">
+   <div style="display:grid;grid-template-columns:minmax(280px,1fr) minmax(280px,1fr);gap:16px;max-width:1100px;">
+    <div class="postbox" style="padding:16px"><h2>Job</h2>
+     <p><label>Project ID<br><input name="project_id" class="regular-text" value="<?php echo esc_attr(Numpo_Settings::default_project());?>" required></label></p>
+     <p><label>Mode<br><select name="mode"><option value="manual">Manual</option><option value="hybrid">Hybrid</option><option value="automatic">Automatic</option></select></label></p>
+     <p><label>Seeds / domains<br><textarea name="seeds" rows="8" class="large-text" placeholder="https://example.com"></textarea></label></p>
+    </div>
+    <div class="postbox" style="padding:16px"><h2>Discovery sources</h2>
+     <label><input type="checkbox" name="source_search" value="1"> Search provider</label><br>
+     <label><input type="checkbox" name="source_sitemap" value="1"> Sitemap</label><br>
+     <label><input type="checkbox" name="source_robots" value="1"> robots.txt</label><br>
+     <label><input type="checkbox" name="source_links" value="1" checked> Link discovery</label><br>
+     <label><input type="checkbox" name="source_subdomains" value="1"> Subdomain discovery</label>
+     <p class="description">در Automatic/Hybrid حداقل یک منبع خودکار لازم است.</p>
+    </div>
+    <div class="postbox" style="padding:16px"><h2>Target filters</h2>
+     <p><label>Country / TLD<br><select name="target_country"><option value="">Any country / TLD</option><option value="ir">Iran (.ir)</option><option value="nl">Netherlands (.nl)</option><option value="us">United States (.us)</option><option value="de">Germany (.de)</option><option value="uk">United Kingdom (.uk)</option><option value="fr">France (.fr)</option><option value="tr">Turkey (.tr)</option></select></label></p>
+     <p class="description">فیلتر اضافه است و جای Seed یا Source را نمی‌گیرد. TLD و سیگنال زبان صفحه بررسی می‌شوند.</p>
+    </div>
+    <div class="postbox" style="padding:16px"><h2>Limits</h2>
+     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <label>Max pages<br><input type="number" min="1" name="max_pages" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_pages',100));?>"></label>
+      <label>Max URLs<br><input type="number" min="1" name="max_urls" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_urls',500));?>"></label>
+      <label>Max depth<br><input type="number" min="0" name="max_depth" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_depth',3));?>"></label>
+      <label>Candidates/page<br><input type="number" min="1" name="max_candidates_per_page" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_candidates_per_page',50));?>"></label>
+     </div>
+    </div>
+   </div>
+   <div class="postbox" style="padding:16px;max-width:1100px"><h2>Routing / capabilities</h2><?php echo wp_kses_post(self::capChecks());?></div>
+   <p><button class="button button-primary">Start discovery</button> <button type="button" class="button" id="numpo-refresh">Refresh</button></p>
+  </form>
+  <div id="numpo-dashboard" style="max-width:1100px"></div>
+ </div>
  <script>
-document.getElementById('numpo-form').addEventListener('submit',async e=>{e.preventDefault();let f=new FormData(e.target);let seeds=f.get('seeds').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);let sources={search_provider:f.has('source_search'),sitemap:f.has('source_sitemap'),robots:f.has('source_robots'),link_discovery:f.has('source_links'),subdomain_from_crawl:f.has('source_subdomains')};let target={};let country=f.get('target_country');if(country)target.countries=[country];let r=await fetch(ajaxurl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'numpo_admin_create',nonce:'<?php echo esc_js(wp_create_nonce('numpo_admin')); ?>',project_id:f.get('project_id'),mode:f.get('mode'),seeds:JSON.stringify(seeds),sources:JSON.stringify(sources),target:JSON.stringify(target)})});document.getElementById('numpo-result').textContent=await r.text();});
+(function(){
+ const root=document.getElementById('numpo-dashboard'), form=document.getElementById('numpo-form');
+ function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+ function caps(f){const out={};['active_probe','deep_crawl','link_discovery','sitemap','robots','subdomain_from_crawl','wordpress','woocommerce','phone','email','business','social','page_classification'].forEach(k=>out[k]=f.has('cap_'+k));return out;}
+ async function api(path,opts={}){const r=await fetch(ajaxurl,{...opts,headers:{'Content-Type':'application/x-www-form-urlencoded',...(opts.headers||{})},body:new URLSearchParams({action:'numpo_admin_proxy',nonce:'<?php echo esc_js(wp_create_nonce('numpo_admin')); ?>',path,...(opts.body||{})})});return r.json();}
+ async function load(id){
+  const data=await api('/jobs/'+encodeURIComponent(id)); if(!data.success)return;
+  const j=data.data; root.innerHTML='<div class="postbox" style="padding:16px"><h2>Job '+esc(j.job_id||id)+'</h2><p>Status: <strong>'+esc(j.status)+'</strong> · Candidates: '+esc(j.candidate_count||0)+' · Probes: '+esc(j.probe_count||0)+'</p><p><button class="button" id="numpo-cancel">Cancel</button> <a class="button" href="'+ajaxurl+'?action=numpo_admin_export&nonce=<?php echo esc_js(wp_create_nonce('numpo_admin')); ?>&job_id='+encodeURIComponent(id)+'">Export CSV</a></p></div>';
+  document.getElementById('numpo-cancel').onclick=async()=>{await api('/jobs/'+encodeURIComponent(id)+'/cancel',{method:'POST'});load(id);};
+  const resources=['candidates','domains','pages','technologies','contacts','business','social','classifications','probes'];
+  for(const res of resources){const d=await api('/jobs/'+encodeURIComponent(id)+'/'+res);if(!d.success)continue;const items=d.data.items||[];const keys=items.length?Object.keys(items[0]).slice(0,7):[];root.innerHTML+='<div class="postbox" style="padding:12px"><h3>'+esc(res)+' ('+esc(d.data.total||items.length)+')</h3>'+(items.length?'<div style="overflow:auto"><table class="widefat striped"><thead><tr>'+keys.map(k=>'<th>'+esc(k)+'</th>').join('')+'</tr></thead><tbody>'+items.slice(0,20).map(x=>'<tr>'+keys.map(k=>'<td>'+esc(typeof x[k]==='object'?JSON.stringify(x[k]):x[k]))+'</td>').join('')+'</tr></tbody></table></div>':'<p>No data.</p>')+'</div>';}
+ }
+ form.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(form),seeds=f.get('seeds').split(/\r?\n/).map(x=>x.trim()).filter(Boolean),sources={search_provider:f.has('source_search'),sitemap:f.has('source_sitemap'),robots:f.has('source_robots'),link_discovery:f.has('source_links'),subdomain_from_crawl:f.has('source_subdomains')},target={};const country=f.get('target_country');if(country)target.countries=[country];const limits={max_pages:+f.get('max_pages'),max_urls:+f.get('max_urls'),max_depth:+f.get('max_depth'),max_candidates_per_page:+f.get('max_candidates_per_page')};const body={project_id:f.get('project_id'),mode:f.get('mode'),seeds:JSON.stringify(seeds),sources:JSON.stringify(sources),target:JSON.stringify(target),limits:JSON.stringify(limits),capabilities:JSON.stringify(caps(f))};const r=await api('/jobs',{method:'POST',body});if(r.success){load(r.data.job_id);}else{root.innerHTML='<div class="notice notice-error"><p>'+esc(r.data||'Request failed')+'</p></div>';}});document.getElementById('numpo-refresh').onclick=()=>{const h=document.querySelector('#numpo-dashboard h2');if(h)load(h.textContent.replace(/^Job /,''));};
+})();
  </script><?php }
  public static function settings(){if(!current_user_can('manage_options'))return;?>
- <div class="wrap"><h1>Numpo Settings</h1><form method="post" action="<?php echo esc_url(admin_url('admin-post.php'));?>"><?php wp_nonce_field('numpo_save');?><input type="hidden" name="action" value="numpo_save"><table class="form-table"><tr><th>Engine URL</th><td><input class="regular-text" name="engine_url" value="<?php echo esc_attr(Numpo_Settings::engine_url());?>"></td></tr><tr><th>API Key</th><td><input type="password" class="regular-text" name="api_key" value="<?php echo esc_attr(Numpo_Settings::api_key());?>"></td></tr></table><button class="button button-primary">Save</button></form></div><?php }
- public static function save(){if(!current_user_can('manage_options')||!check_admin_referer('numpo_save'))wp_die('Forbidden');update_option('numpo_engine_url',esc_url_raw(wp_unslash($_POST['engine_url']??'')));update_option('numpo_api_key',sanitize_text_field(wp_unslash($_POST['api_key']??'')));wp_safe_redirect(admin_url('admin.php?page=numpo-settings&updated=1'));exit;}
+ <div class="wrap"><h1>Numpo Settings</h1><form method="post" action="<?php echo esc_url(admin_url('admin-post.php'));?>"><?php wp_nonce_field('numpo_save');?><input type="hidden" name="action" value="numpo_save">
+  <h2>Engine connection</h2><table class="form-table">
+   <tr><th>Engine URL</th><td><input class="regular-text" name="engine_url" value="<?php echo esc_attr(Numpo_Settings::engine_url());?>" placeholder="http://127.0.0.1:8080"><p class="description">Base URL of the Go engine.</p></td></tr>
+   <tr><th>API Key</th><td><input type="password" class="regular-text" name="api_key" value="<?php echo esc_attr(Numpo_Settings::api_key());?>"><p class="description">Used as Bearer authentication.</p></td></tr>
+  </table>
+  <h2>Discovery defaults</h2><table class="form-table">
+   <tr><th>Default project</th><td><input class="regular-text" name="default_project" value="<?php echo esc_attr(Numpo_Settings::default_project());?>"></td></tr>
+   <tr><th>Search provider template</th><td><input class="large-text" name="search_url_template" value="<?php echo esc_attr(Numpo_Settings::search_url_template());?>" placeholder="https://provider.example/search?q={query}"><p class="description">The engine replaces {query} and accepts newline-separated HTTP(S) URLs from the provider.</p></td></tr>
+  </table>
+  <h2>Safety & crawl limits</h2><table class="form-table">
+   <tr><th>Limits</th><td>Max pages <input type="number" min="1" name="max_pages" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_pages',100));?>"> &nbsp; Max URLs <input type="number" min="1" name="max_urls" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_urls',500));?>"> &nbsp; Max depth <input type="number" min="0" name="max_depth" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_depth',3));?>"> &nbsp; Candidates/page <input type="number" min="1" name="max_candidates_per_page" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_candidates_per_page',50));?>"></td></tr>
+   <tr><th>Rate limit</th><td><input type="number" min="1" name="domain_rate_limit_ms" value="<?php echo esc_attr(Numpo_Settings::int('numpo_domain_rate_limit_ms',250));?>"> ms per domain</td></tr>
+   <tr><th>Probe cache TTL</th><td><input type="number" min="1" name="probe_ttl_seconds" value="<?php echo esc_attr(Numpo_Settings::int('numpo_probe_ttl_seconds',3600));?>"> seconds</td></tr>
+   <tr><th>Scope</th><td><label><input type="checkbox" name="allow_subdomains" value="1" <?php checked(Numpo_Settings::bool('allow_subdomains',false),true);?>> Allow subdomains</label><br><label><input type="checkbox" name="allow_external_links" value="1" <?php checked(Numpo_Settings::bool('allow_external_links',false),true);?>> Allow external links</label></td></tr>
+  </table>
+  <h2>Default capabilities</h2><p><?php echo wp_kses_post(self::capChecks());?></p>
+  <p><button class="button button-primary">Save settings</button></p>
+ </form></div><?php }
+ public static function save(){
+  if(!current_user_can('manage_options')||!check_admin_referer('numpo_save'))wp_die('Forbidden');
+  update_option('numpo_engine_url',esc_url_raw(wp_unslash($_POST['engine_url']??'')));
+  update_option('numpo_api_key',sanitize_text_field(wp_unslash($_POST['api_key']??'')));
+  update_option('numpo_default_project',sanitize_text_field(wp_unslash($_POST['default_project']??'default')));
+  update_option('numpo_search_url_template',esc_url_raw(wp_unslash($_POST['search_url_template']??'')));
+  foreach(['max_pages'=>100,'max_urls'=>500,'max_depth'=>3,'max_candidates_per_page'=>50,'domain_rate_limit_ms'=>250,'probe_ttl_seconds'=>3600] as $k=>$d)update_option('numpo_'.$k,max(1,absint($_POST[$k]??$d)));
+  foreach(['active_probe','deep_crawl','link_discovery','sitemap','robots','subdomain_from_crawl','wordpress','woocommerce','phone','email','business','social','page_classification'] as $k=>$_)update_option('numpo_cap_'.$k,isset($_POST['cap_'.$k])?'1':'0');
+  update_option('numpo_allow_subdomains',isset($_POST['allow_subdomains'])?'1':'0');
+  update_option('numpo_allow_external_links',isset($_POST['allow_external_links'])?'1':'0');
+  wp_safe_redirect(admin_url('admin.php?page=numpo-settings&updated=1'));exit;
+ }
 }
