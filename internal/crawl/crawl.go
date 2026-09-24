@@ -6,6 +6,7 @@ import(
  "net/http"
  "net/url"
  "strings"
+ "strconv"
  "time"
  "golang.org/x/net/html"
  "github.com/samanramezani1377-hub/crawler-numpo/internal/policy"
@@ -29,10 +30,13 @@ func(c *Crawler)Fetch(ctx context.Context,raw string)(Page,error){
  b,e:=io.ReadAll(io.LimitReader(resp.Body,c.MaxBytes+1));if e!=nil{return Page{},e}
  if int64(len(b))>c.MaxBytes{return Page{},&LimitError{}}
  p:=Page{URL:resp.Request.URL.String(),Status:resp.StatusCode,ContentType:resp.Header.Get("Content-Type"),Body:string(b)}
+ if resp.StatusCode==429||resp.StatusCode>=500{retry:=resp.Header.Get("Retry-After");resp.Body.Close();return Page{},&HTTPError{Status:resp.StatusCode,RetryAfter:retry}}
+
  if strings.Contains(strings.ToLower(p.ContentType),"text/html"){p.Title,p.Links=ParseHTML(resp.Request.URL,string(b),c.MaxLinks)}
  return p,nil
 }
 type LimitError struct{};func(*LimitError)Error()string{return "response size limit exceeded"}
+type HTTPError struct{Status int;RetryAfter string};func(e *HTTPError)Error()string{return "http status "+strconv.Itoa(e.Status)}
 func ParseHTML(base *url.URL,body string,max int)(string,[]string){
  doc,e:=html.Parse(strings.NewReader(body));if e!=nil{return "",nil};var title string;var links []string
  var walk func(*html.Node);walk=func(n *html.Node){
