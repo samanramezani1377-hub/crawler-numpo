@@ -45,7 +45,9 @@ func(s *Server)metrics(w http.ResponseWriter,r *http.Request){
  }
  w.Header().Set("Content-Type","text/plain; version=0.0.4")
  w.WriteHeader(http.StatusOK)
- _,_=w.Write([]byte(strings.Join(lines,"\n")+"\n"))
+ _,_=w.Write([]byte(strings.Join(lines,"
+")+"
+"))
 }
 func itoa(v int)string{if v==0{return "0"};s:="";for v>0{s=string(rune('0'+v%10))+s;v/=10};return s}
 func write(w http.ResponseWriter,status int,v any){w.Header().Set("Content-Type","application/json");w.WriteHeader(status);_ = json.NewEncoder(w).Encode(v)}
@@ -55,4 +57,12 @@ func(s *Server)importCSV(w http.ResponseWriter,r *http.Request){defer r.Body.Clo
 func(s *Server)exportCSV(w http.ResponseWriter,r *http.Request){parts:=strings.Split(strings.Trim(r.URL.Path,"/"),"/");if len(parts)<6{writeErr(w,404,"not_found","Job not found.",false);return};id:=parts[4];items,e:=s.Store.Candidates(r.Context(),id);if e!=nil{writeErr(w,500,"internal_error",e.Error(),true);return};w.Header().Set("Content-Type","text/csv");w.Header().Set("Content-Disposition",`attachment; filename="numpo-candidates.csv"`);cw:=csv.NewWriter(w);_ = cw.Write([]string{"url","normalized_domain","source_type","priority","confidence","status","attempt_count"});for _,v:=range items{_ = cw.Write([]string{fmtString(v["url"]),fmtString(v["normalized_domain"]),fmtString(v["source_type"]),fmtString(v["priority"]),fmtString(v["confidence"]),fmtString(v["status"]),fmtString(v["attempt_count"])})};cw.Flush()}
 func(s *Server)errors(w http.ResponseWriter,r *http.Request){parts:=strings.Split(strings.Trim(r.URL.Path,"/"),"/");if len(parts)<6{writeErr(w,404,"not_found","Job not found.",false);return};id:=parts[4];page:=1;if v,e:=strconv.Atoi(r.URL.Query().Get("page"));e==nil&&v>0{page=v};per:=50;if v,e:=strconv.Atoi(r.URL.Query().Get("per_page"));e==nil&&v>0&&v<=200{per=v};items,e:=s.Store.JobErrors(r.Context(),id,per,(page-1)*per);if e!=nil{writeErr(w,500,"internal_error",e.Error(),true);return};write(w,200,map[string]any{"items":items,"page":page,"per_page":per})}
 func fmtString(v any)string{switch x:=v.(type){case string:return x;case int:return strconv.Itoa(x);case float64:return strconv.FormatFloat(x,'f',4,64);default:return ""}}
-\nfunc(s *Server)health(w http.ResponseWriter,r *http.Request){\n components:=map[string]string{"database":"ok","browser":"disabled"}\n status:=http.StatusOK\n if s.Store==nil||s.Store.DB==nil { components["database"]="unavailable"; status=http.StatusServiceUnavailable } else if e:=s.Store.DB.Ping(r.Context());e!=nil { components["database"]="unavailable"; status=http.StatusServiceUnavailable }\n if strings.TrimSpace(s.Cfg.BrowserBinary)!="" { if _,e:=os.Stat(s.Cfg.BrowserBinary);e!=nil { components["browser"]="unavailable"; status=http.StatusServiceUnavailable } else { components["browser"]="ok" } }\n state:="ok"; if status!=http.StatusOK { state="degraded" }\n write(w,status,map[string]any{"status":state,"service":"numpo-engine","components":components})\n}\n
+
+func(s *Server)health(w http.ResponseWriter,r *http.Request){
+ components:=map[string]string{"database":"ok","browser":"disabled"}
+ status:=http.StatusOK
+ if s.Store==nil||s.Store.DB==nil { components["database"]="unavailable"; status=http.StatusServiceUnavailable } else if e:=s.Store.DB.Ping(r.Context());e!=nil { components["database"]="unavailable"; status=http.StatusServiceUnavailable }
+ if strings.TrimSpace(s.Cfg.BrowserBinary)!="" { if _,e:=os.Stat(s.Cfg.BrowserBinary);e!=nil { components["browser"]="unavailable"; status=http.StatusServiceUnavailable } else { components["browser"]="ok" } }
+ state:="ok"; if status!=http.StatusOK { state="degraded" }
+ write(w,status,map[string]any{"status":state,"service":"numpo-engine","components":components})
+}
