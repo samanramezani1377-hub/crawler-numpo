@@ -28,8 +28,8 @@ func(p *SSRFProxy) serveConn(ctx context.Context,c net.Conn){
  if strings.EqualFold(req.Method,http.MethodConnect) {
   host:=req.Host; if !strings.Contains(host,":"){host+=":443"}
   target:="https://"+host
-  if e=policy.ValidateURL(target);e!=nil{http.Error(bufio.NewWriter(c),"blocked",http.StatusForbidden);return}
-  upstream,e:=p.transport.DialContext(ctx,"tcp",host);if e!=nil{http.Error(bufio.NewWriter(c),"connect failed",http.StatusBadGateway);return}
+  if e=policy.ValidateURL(target);e!=nil{_,_=io.WriteString(c,"HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");return}
+  upstream,e:=p.transport.DialContext(ctx,"tcp",host);if e!=nil{_,_=io.WriteString(c,"HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\n");return}
   defer upstream.Close()
   bw:=bufio.NewWriter(c);_,_=bw.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n");_=bw.Flush()
   go func(){_,_=io.Copy(upstream,br);_=upstream.Close()}()
