@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"net"
 	"time"
 
 	embeddedpostgres "github.com/fergusstrange/embedded-postgres"
@@ -34,6 +35,13 @@ func StartEmbeddedPostgres(ctx context.Context, baseDir, cacheDir string) (*Embe
 		Locale("C").
 		Encoding("UTF8")
 	pg := embeddedpostgres.NewDatabase(cfg)
+	// A previous engine process can die without running its deferred PostgreSQL
+	// shutdown. Reuse an already-listening local instance instead of failing
+	// with "process already listening on port 55432".
+	if conn, err := net.DialTimeout("tcp", "127.0.0.1:55432", 300*time.Millisecond); err == nil {
+		_ = conn.Close()
+		return &EmbeddedPostgres{DSN: cfg.GetConnectionURL() + "?sslmode=disable"}, nil
+	}
 	if err := pg.Start(); err != nil { return nil, fmt.Errorf("start embedded postgres: %w", err) }
 	select {
 	case <-ctx.Done():
