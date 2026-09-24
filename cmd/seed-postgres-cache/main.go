@@ -14,7 +14,7 @@ func main() {
 	if cache == "" { cache = filepath.Join("dist", "postgres-cache") }
 	if err := os.MkdirAll(cache, 0700); err != nil { log.Fatal(err) }
 	cfg := embeddedpostgres.DefaultConfig().
-		Version(embeddedpostgres.V17).
+		Version(embeddedpostgres.V16).
 		Port(55433).
 		Database("numpo").
 		Username("numpo").
