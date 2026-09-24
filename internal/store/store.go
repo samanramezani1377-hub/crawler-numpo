@@ -9,13 +9,13 @@ func(s *Store)GetJobStatus(ctx context.Context,id string)(string,error){var stat
 func(s *Store)SetJobStatus(ctx context.Context,id,status string)error{if status=="cancelled"{_,e:=s.DB.Exec(ctx,"UPDATE discovery_jobs SET status=$2,cancelled_at=now(),updated_at=now() WHERE id=$1 AND status NOT IN ('completed','failed','cancelled')",id,status);return e};_,e:=s.DB.Exec(ctx,`UPDATE discovery_jobs SET status=$2,updated_at=now() WHERE id=$1 AND status NOT IN ('completed','failed','cancelled')`,id,status);return e}
 func(s *Store)UpsertCandidate(ctx context.Context,id,job,u,nu,domain,host,source,parent string,priority int,confidence float64)error{_,e:=s.DB.Exec(ctx,`INSERT INTO candidates(id,discovery_job_id,url,normalized_url,normalized_domain,normalized_host,source_type,parent_url,priority,confidence,status,next_attempt_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'new',now()) ON CONFLICT(discovery_job_id,normalized_url) DO NOTHING`,id,job,u,nu,domain,host,source,parent,priority,confidence);return e}
 func(s *Store)Candidates(ctx context.Context,job string)([]map[string]any,error){rows,e:=s.DB.Query(ctx,`SELECT id,url,normalized_url,normalized_domain,normalized_host,source_type,parent_url,priority,confidence,status,attempt_count,last_error,discovered_at FROM candidates WHERE discovery_job_id=$1 ORDER BY priority DESC,discovered_at`,job);if e!=nil{return nil,e};defer rows.Close();var out []map[string]any;for rows.Next(){var id,u,nu,d,h,src,parent,status,last string;var p,a int;var c float64;var at time.Time;if e=rows.Scan(&id,&u,&nu,&d,&h,&src,&parent,&p,&c,&status,&a,&last,&at);e!=nil{return nil,e};out=append(out,map[string]any{"id":id,"url":u,"normalized_url":nu,"normalized_domain":d,"normalized_host":h,"source_type":src,"parent_url":parent,"priority":p,"confidence":c,"status":status,"attempt_count":a,"last_error":last,"discovered_at":at})};return out,rows.Err()}
-func(s *Store)ClaimCandidate(ctx context.Context,job string,lease time.Duration)(string,string,string,string,error){
- tx,e:=s.DB.Begin(ctx);if e!=nil{return "","","","",e};defer tx.Rollback()
- var id,u,domain,status string
- q:=`SELECT id,url,normalized_domain,status FROM candidates WHERE discovery_job_id=$1 AND ((status IN ('new','queued','failed_retryable') AND next_attempt_at<=now()) OR (status='processing' AND lease_until<now())) ORDER BY priority DESC,discovered_at FOR UPDATE SKIP LOCKED LIMIT 1`
- e=tx.QueryRow(ctx,q,job).Scan(&id,&u,&domain,&status);if e!=nil{return "","","","",e}
+func(s *Store)ClaimCandidate(ctx context.Context,job string,lease time.Duration)(string,string,string,string,int,error){
+ tx,e:=s.DB.Begin(ctx);if e!=nil{return "","","","",0,e};defer tx.Rollback()
+ var id,u,domain,status string;var depth int
+ q:=`SELECT id,url,normalized_domain,status,depth FROM candidates WHERE discovery_job_id=$1 AND ((status IN ('new','queued','failed_retryable') AND next_attempt_at<=now()) OR (status='processing' AND lease_until<now())) ORDER BY priority DESC,discovered_at FOR UPDATE SKIP LOCKED LIMIT 1`
+ e=tx.QueryRow(ctx,q,job).Scan(&id,&u,&domain,&status,&depth);if e!=nil{return "","","","",e}
  if _,e=tx.Exec(ctx,"UPDATE candidates SET status='processing',attempt_count=attempt_count+1,processing_started_at=now(),lease_until=now()+($2 * interval '1 millisecond') WHERE id=$1",id,lease.Milliseconds());e!=nil{return "","","","",e}
- if e=tx.Commit(ctx);e!=nil{return "","","","",e};return id,u,domain,status,nil
+ if e=tx.Commit(ctx);e!=nil{return "","","","",e};return id,u,domain,status,depth,nil
 }
 func(s *Store)SetCandidateStatus(ctx context.Context,id,status,lastError string)error{_,e:=s.DB.Exec(ctx,`UPDATE candidates SET status=$2,last_error=$3,lease_until=NULL,completed_at=CASE WHEN $2 IN ('completed','failed_final') THEN now() ELSE completed_at END WHERE id=$1`,id,status,lastError);return e}
 func(s *Store)ScheduleRetry(ctx context.Context,id,lastError string,attempt int)error{
