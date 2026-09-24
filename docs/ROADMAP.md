@@ -2,12 +2,29 @@
 
 ## مرحله صفر — مستندسازی
 
+- [x] تفکیک Discovery از Crawl
+- [x] تعریف Active Domain Discovery
+- [x] تعریف Deep Search
+- [x] تعریف Candidate و Provenance
+- [x] طراحی Discovery API اولیه
+
 - [x] هدف محصول
 - [x] مرزبندی WordPress و Go
 - [x] مدل‌های استقرار
 - [x] قرارداد API
 - [x] مدل داده
 - [x] اصول کراول مسئولانه
+
+## مرحله یک — Discovery و موتور MVP
+
+- [ ] طراحی Candidate و Discovery Job
+- [ ] Active Domain Check
+- [ ] Seed List / CSV Import
+- [ ] robots.txt و Sitemap Discovery
+- [ ] Link Discovery
+- [ ] Discovery Provider Interface
+- [ ] اولین Search Provider
+- [ ] Deep Search Pipeline
 
 ## مرحله یک — موتور MVP
 
