@@ -18,5 +18,5 @@ func TestMatchCountryFromSignals(t *testing.T) {
 }
 
 func TestEmptyTarget(t *testing.T) {
-	if !Config{}.Match("https://example.com", "", nil, false) { t.Fatal("empty target should match") }
+	if !(Config{}).Match("https://example.com", "", nil, false) { t.Fatal("empty target should match") }
 }
