@@ -22,7 +22,7 @@ func StartEmbeddedPostgres(ctx context.Context, baseDir, cacheDir string) (*Embe
 	if err := os.MkdirAll(cacheDir, 0700); err != nil { return nil, err }
 	port := uint32(55432)
 	cfg := embeddedpostgres.DefaultConfig().
-		Version(embeddedpostgres.V17).
+		Version(embeddedpostgres.V16).
 		Port(port).
 		Database("numpo").
 		Username("numpo").
