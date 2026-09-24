@@ -322,3 +322,26 @@ PostgreSQL
 ~~~
 
 تعداد Workerها بر اساس Queue و ظرفیت واقعی شبکه افزایش داده می‌شود.
+
+
+## ۱۴. جداسازی Discovery از Crawl
+
+Discovery یک لایهٔ مستقل قبل از Crawl است.
+
+```text
+Discovery
+  ├── Active Domain Discovery
+  └── Deep Search
+          ↓
+     Candidate Queue
+          ↓
+       Crawl Engine
+          ↓
+   Detection / Extraction
+```
+
+**Active Domain Discovery** برای غربال سریع دامنه‌های قابل دسترسی طراحی می‌شود و نباید وارد Crawl عمیق شود. **Deep Search** برای پیدا کردن و تحلیل سایت‌هایی با معیار مشخص استفاده می‌شود.
+
+منابع Discovery می‌توانند Manual Seed، Seed List/CSV، Search Provider، Sitemap/robots.txt و لینک‌های کشف‌شده در Crawl باشند. Search Providerها باید پشت Interface مستقل قرار بگیرند تا وابستگی به یک سرویس خاص ایجاد نشود.
+
+هر Candidate باید Provenance داشته باشد و پیش از ورود به Queue از Normalize، Deduplicate و Policy/SSRF checks عبور کند. جزئیات در [DISCOVERY](DISCOVERY.md) آمده است.
