@@ -3,8 +3,6 @@ package policy
 import (
  "context"
  "net"
- "net/http"
- "net/http/httptest"
  "testing"
  "github.com/samanramezani1377-hub/crawler-numpo/internal/urlnorm"
 )
