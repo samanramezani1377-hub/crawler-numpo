@@ -113,9 +113,11 @@ HTTP غیرهمزمان روش پیش‌فرض است.
 
 ## وضعیت فعلی
 
-MVP پیاده‌سازی شده است: پلاگین WordPress کنترل‌پلین، Go Engine، API نسخه‌بندی‌شده، PostgreSQL schema، نرمال‌سازی URL، SSRF policy، Candidate Store با dedup اتمیک، Active Probe، Discovery Providerهای Sitemap/Robots، Deep Crawl محدود، تشخیص اولیه WordPress/WooCommerce و استخراج عمومی Email/Phone در مخزن قرار گرفته‌اند.
+هستهٔ MVP و سخت‌سازی Production پیاده‌سازی شده است: پلاگین WordPress کنترل‌پلین، Go Engine، API نسخه‌بندی‌شده، PostgreSQL schema، نرمال‌سازی URL، SSRF policy، Candidate Store با dedup اتمیک، Active Probe، Discovery Providerهای Sitemap/Robots، Search Provider قابل‌تعویض و صفحه‌بندی‌شده، Deep Crawl محدود، تشخیص فناوری و استخراج اطلاعات عمومی در مخزن قرار گرفته‌اند.
 
-CI شامل `go test ./...` و `go vet ./...` است. اجرای تست در محیط توسعه فعلی به‌دلیل نبود دسترسی شبکه برای دریافت dependencyهای Go قابل انجام نبود و هیچ تستی bypass نشده است.
+Pipeline انتهابه‌انتها، تست بار چند Worker، تست Race، `go vet`، PHPUnit روی WordPress واقعی/MySQL و ساخت ZIP نصب‌شدنی پلاگین در CI اجرا می‌شوند. Browser escalation نیز از یک proxy محلی با SSRF validation عبور می‌کند تا درخواست‌های HTTP/HTTPS مرورگر خارج از policy موتور نتوانند به مقصدهای خصوصی دسترسی پیدا کنند.
+
+در ساختار پروژه فقط `wordpress-plugin/numpo` منبع رسمی پلاگین است و tree قدیمی `numpo/` حذف شده است.
 
 ## مستندات
 
