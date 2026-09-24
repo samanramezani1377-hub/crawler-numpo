@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/google/uuid v1.6.0
+	github.com/fergusstrange/embedded-postgres v1.34.0
 	github.com/jackc/pgx/v5 v5.7.2
 	golang.org/x/net v0.34.0
 )
