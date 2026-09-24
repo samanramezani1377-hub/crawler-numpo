@@ -132,7 +132,10 @@ jobs:
           rsync -a wordpress-plugin/numpo/ dist/numpo/ \
             --exclude='.git' --exclude='tests' --exclude='vendor' \
             --exclude='composer.json' --exclude='phpunit.xml.dist' --exclude='bin'
+          cp -a migrations dist/numpo/migrations
           test -f dist/numpo/numpo.php
+          test -f dist/numpo/migrations/001_init.sql
+          test -x dist/numpo/engine/numpo-engine
           (cd dist && zip -qr numpo.zip numpo)
           unzip -t dist/numpo.zip
       - name: Upload plugin artifact
