@@ -65,7 +65,7 @@ func inferCountry(rawURL, body string) string {
 			if len(parts) >= 3 && tld == "uk" && parts[len(parts)-2] == "co" { return "gb" }
 		}
 	}
-	re := regexp.MustCompile(`(?is)<html[^>]*\blang=["']([a-z]{2})(?:-[a-z]{2})?["']`)
+	re := regexp.MustCompile(`(?i)<html[^>]*lang=["']([a-z]{2})(?:-[a-z]{2})?["']`)
 	if m := re.FindStringSubmatch(body); len(m) == 2 { return strings.ToLower(m[1]) }
 	return ""
 }
