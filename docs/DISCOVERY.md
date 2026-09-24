@@ -479,3 +479,91 @@ Discovery Queue   → Discovery Workers
 اگر Domain قبلاً بررسی شده باشد، نتیجهٔ Probe دوباره استفاده می‌شود و URL می‌تواند وارد Deep Queue شود.
 
 اگر Domain جدید باشد، ابتدا Active Probe انجام می‌شود و بعد بر اساس Classification و Routing Rule تصمیم گرفته می‌شود که آیا وارد Deep Search شود یا فقط به‌عنوان یک Domain کشف‌شده نگهداری شود.
+
+
+## قابلیت‌های قابل فعال/غیرفعال شدن
+
+تمام قابلیت‌های Discovery و مسیرهای گسترش Crawl باید به‌صورت مستقل قابل فعال یا غیرفعال شدن باشند. فعال بودن یک قابلیت نباید به‌صورت ضمنی قابلیت دیگری را فعال کند.
+
+حداقل تنظیمات:
+
+- `discovery.enabled`
+- `discovery.manual_seeds.enabled`
+- `discovery.csv_import.enabled`
+- `discovery.search_provider.enabled`
+- `discovery.sitemap.enabled`
+- `discovery.robots.enabled`
+- `discovery.link_discovery.enabled`
+- `discovery.subdomain_from_crawl.enabled`
+- `active_probe.enabled`
+- `deep_search.enabled`
+- `deep_search.external_links.enabled`
+- `deep_search.subdomains.enabled`
+
+هر قابلیت باید وضعیت مستقل داشته باشد:
+
+```text
+ENABLED
+DISABLED
+```
+
+### Subdomain Discovery
+
+در MVP، کشف ساب‌دامین از داخل Deep Crawler انجام می‌شود و یک قابلیت مستقل و قابل تنظیم است:
+
+```text
+Deep Crawler
+   ↓
+Subdomain Discovery [ON/OFF]
+   ↓
+New Host Candidate
+   ↓
+Active Probe [ON/OFF]
+   ↓
+Classification
+   ↓
+Routing
+```
+
+اگر `subdomain_from_crawl` خاموش باشد، Deep Crawler نباید از لینک‌ها و URLهای صفحات Candidate ساب‌دامین جدید تولید کند؛ اما سایر Discoveryها همچنان می‌توانند طبق تنظیم خودشان فعال باشند.
+
+همچنین قابلیت Subdomain Discovery مستقل از Active Probe است. بنابراین خاموش کردن Active Probe به‌معنی حذف Candidate ساب‌دامین نیست؛ Candidate می‌تواند ثبت شود و طبق Routing/Policy بعدی منتظر پردازش بماند.
+
+### استقلال قابلیت‌ها
+
+نمونه:
+
+```text
+Sitemap       = ON
+Robots        = OFF
+Link Discovery= ON
+Subdomain     = OFF
+Active Probe  = ON
+Deep Search   = ON
+```
+
+این ترکیب باید کاملاً معتبر باشد.
+
+تنظیمات باید در سطح مناسب Scope داشته باشند؛ در صورت نیاز می‌توان تنظیمات پیش‌فرض پروژه را با تنظیمات یک Job Override کرد. هر Job باید Snapshot تنظیمات مؤثر خود را نگه دارد تا نتیجهٔ آن بعداً قابل بازتولید و Audit باشد.
+
+### Routing نیز قابل تنظیم است
+
+Routing Ruleها نباید hard-code شوند. هر Rule باید حداقل این مفاهیم را داشته باشد:
+
+- enabled
+- priority
+- conditions
+- action
+- target_queue
+
+مثال:
+
+```text
+Rule: WordPress + WooCommerce
+enabled = true
+conditions = active AND wordpress AND woocommerce
+action = enqueue
+target_queue = deep_crawl
+```
+
+با `enabled = false` همان Classificationها همچنان ذخیره می‌شوند، اما Rule مربوطه مسیر Deep Crawl ایجاد نمی‌کند.
