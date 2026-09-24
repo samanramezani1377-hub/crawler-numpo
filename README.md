@@ -4,6 +4,8 @@
 
 ## معماری
 
+معماری Discovery و Crawl از هم جداست. Numpo ابتدا می‌تواند دامنه‌های فعال را با Active Domain Discovery غربال کند و سپس Deep Search را فقط روی کاندیدهای مناسب اجرا کند. جزئیات در [معماری Discovery](docs/DISCOVERY.md) آمده است.
+
 ~~~text
 پلاگین وردپرس
       |
@@ -42,7 +44,10 @@ WordPress -> API -> صف -> چند Worker در Go -> PostgreSQL
 
 ## قابلیت‌های محصول
 
-1. دریافت دامنه‌ها و URLهای اولیه.
+1. Discovery دامنه‌ها و URLهای کاندید.
+2. بررسی سریع فعال بودن دامنه.
+3. جستجوی عمیق و Crawl هدفمند.
+4. دریافت دامنه‌ها و URLهای اولیه.
 2. کراول محدود و کنترل‌شدهٔ هر دامنه.
 3. اولویت‌دهی به صفحات مهم مانند تماس با ما و درباره ما.
 4. تشخیص فناوری سایت.
@@ -116,6 +121,14 @@ HTTP غیرهمزمان روش پیش‌فرض است.
 - [قرارداد API](docs/API-CONTRACT.md)
 - [مدل داده](docs/DATA-MODEL.md)
 - [نقشه راه](docs/ROADMAP.md)
+
+## Pipeline اصلی
+
+```text
+Discovery → Active Check → Technology Filter → Deep Search → Intelligence
+```
+
+Active Check برای غربال سریع دامنه‌های فعال است و Deep Search برای تحلیل عمیق سایت‌های منتخب. هر دو از Go Crawl Engine و محدودیت‌های امنیتی و Rate Limit مشترک استفاده می‌کنند.
 
 ## تعریف MVP
 
