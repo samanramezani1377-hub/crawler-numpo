@@ -43,7 +43,7 @@ func(p *HTTPSearchProvider)Discover(ctx context.Context,query string)([]string,e
  for page:=1;page<=max;page++{results,e:=p.Search(ctx,query,page);if e!=nil{return out,e};if len(results)==0{break};for _,r:=range results{if !seen[r.URL]{seen[r.URL]=true;out=append(out,r.URL)}}}
  return out,nil
 }
-func parseSearchResults(body string,page,provider string)[]Result{
+func parseSearchResults(body string,page int,provider string)[]Result{
  var raw []struct{URL string `json:"url"`;Title string `json:"title"`;Snippet string `json:"snippet"`}
  if json.Unmarshal([]byte(body),&raw)==nil{out:=make([]Result,0,len(raw));for _,r:=range raw{if u,e:=normalizeResultURL(r.URL);e==nil{out=append(out,Result{u,r.Title,r.Snippet,page,provider})}};return dedupResults(out)}
  var out []Result
