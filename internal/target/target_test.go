@@ -13,8 +13,8 @@ func TestMatchTechnologiesAndPhone(t *testing.T) {
 func TestMatchCountryFromSignals(t *testing.T) {
 	c := Config{Countries: []string{"ir"}}
 	if !c.Match("https://example.ir", "", nil, false) { t.Fatal("expected ccTLD match") }
-	if !c.Match("https://example.com", `<html lang="fa">`, nil, false) { t.Fatal("expected language signal match") }
-	if c.Match("https://example.com", `<html lang="en">`, nil, false) { t.Fatal("unexpected country match") }
+	if !c.Match("https://example.com", '<html lang="fa">', nil, false) { t.Fatal("expected language signal match") }
+	if c.Match("https://example.com", '<html lang="en">', nil, false) { t.Fatal("unexpected country match") }
 }
 
 func TestEmptyTarget(t *testing.T) {
