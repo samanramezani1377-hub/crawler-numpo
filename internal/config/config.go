@@ -8,6 +8,7 @@ type Config struct{
  APIKey string
  AllowAnonymousAPI bool
  SearchURLTemplate string
+ SearchMaxPages int
  HTTPTimeoutSeconds int
  MaxBodyBytes int64
  MaxPages int
@@ -29,6 +30,7 @@ func Load() Config{
   APIKey:os.Getenv("NUMPO_API_KEY"),
   AllowAnonymousAPI:boolEnv("NUMPO_ALLOW_ANONYMOUS_API",false),
   SearchURLTemplate:os.Getenv("NUMPO_SEARCH_URL_TEMPLATE"),
+  SearchMaxPages:intEnv("NUMPO_SEARCH_MAX_PAGES",5),
   HTTPTimeoutSeconds:intEnv("NUMPO_HTTP_TIMEOUT_SECONDS",15),
   MaxBodyBytes:int64Env("NUMPO_MAX_BODY_BYTES",2<<20),
   MaxPages:intEnv("NUMPO_MAX_PAGES",100),
