@@ -10,17 +10,40 @@ class Numpo_Admin {
   return $html;
  }
  public static function page(){if(!current_user_can('manage_options'))return;?>
- <div class="wrap">
+ <style>
+#numpo-app{max-width:1180px;margin-top:18px}
+#numpo-app .numpo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+#numpo-app .numpo-card{background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:18px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+#numpo-app .numpo-card h2{margin:0 0 14px;font-size:16px}
+#numpo-app .numpo-card p:last-child{margin-bottom:0}
+#numpo-app .numpo-field{display:block;margin:0 0 14px}
+#numpo-app .numpo-field:last-child{margin-bottom:0}
+#numpo-app .numpo-field>span{display:block;font-weight:600;margin-bottom:6px}
+#numpo-app input[type=text],#numpo-app input[type=number],#numpo-app select,#numpo-app textarea{width:100%;box-sizing:border-box}
+#numpo-app textarea{min-height:130px;resize:vertical}
+#numpo-app .numpo-help{color:#646970;font-size:12px;margin-top:6px}
+#numpo-app .numpo-checks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#numpo-app .numpo-check{display:flex;align-items:center;gap:8px;margin:0;padding:10px 12px;border:1px solid #dcdcde;border-radius:8px;background:#f6f7f7;cursor:pointer;min-height:20px}
+#numpo-app .numpo-check:hover{border-color:#8c8f94;background:#fff}
+#numpo-app .numpo-check input{margin:0}
+#numpo-app .numpo-limits{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+#numpo-app .numpo-actions{display:flex;align-items:center;gap:8px;margin:16px 0 22px}
+#numpo-app .numpo-status{min-height:20px}
+#numpo-app .numpo-wide{grid-column:1/-1}
+#numpo-app .numpo-pill{display:inline-block;padding:3px 8px;border-radius:999px;background:#f0f0f1;font-size:12px}
+@media(max-width:900px){#numpo-app .numpo-grid{grid-template-columns:1fr}#numpo-app .numpo-wide{grid-column:auto}#numpo-app .numpo-checks{grid-template-columns:repeat(2,minmax(0,1fr))}#numpo-app .numpo-limits{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){#numpo-app .numpo-checks,#numpo-app .numpo-limits{grid-template-columns:1fr}}
+</style><div class="wrap" id="numpo-app">
   <h1>Numpo Discovery</h1>
   <p>ایجاد، پایش و بررسی Jobهای Discovery از یک صفحه.</p>
   <form id="numpo-form">
-   <div style="display:grid;grid-template-columns:minmax(280px,1fr) minmax(280px,1fr);gap:16px;max-width:1100px;">
-    <div class="postbox" style="padding:16px"><h2>Job</h2>
+   <div class="numpo-grid">
+    <div class="numpo-card"><h2>Job</h2>
      <p><label>Project ID<br><input name="project_id" class="regular-text" value="<?php echo esc_attr(Numpo_Settings::default_project());?>" required></label></p>
      <p><label>Mode<br><select name="mode"><option value="manual">Manual</option><option value="hybrid">Hybrid</option><option value="automatic">Automatic</option></select></label></p>
      <p><label>Seeds / domains<br><textarea name="seeds" rows="8" class="large-text" placeholder="https://example.com"></textarea></label></p>
     </div>
-    <div class="postbox" style="padding:16px"><h2>Discovery sources</h2>
+    <div class="numpo-card"><h2>Discovery sources</h2>
      <label><input type="checkbox" name="source_search" value="1"> Search provider</label><br>
      <label><input type="checkbox" name="source_sitemap" value="1"> Sitemap</label><br>
      <label><input type="checkbox" name="source_robots" value="1"> robots.txt</label><br>
@@ -28,12 +51,12 @@ class Numpo_Admin {
      <label><input type="checkbox" name="source_subdomains" value="1"> Subdomain discovery</label>
      <p class="description">در Automatic/Hybrid حداقل یک منبع خودکار لازم است.</p>
     </div>
-    <div class="postbox" style="padding:16px"><h2>Target filters</h2>
+    <div class="numpo-card"><h2>Target filters</h2>
      <p><label>Country / TLD<br><select name="target_country"><option value="">Any country / TLD</option><option value="ir">Iran (.ir)</option><option value="nl">Netherlands (.nl)</option><option value="us">United States (.us)</option><option value="de">Germany (.de)</option><option value="uk">United Kingdom (.uk)</option><option value="fr">France (.fr)</option><option value="tr">Turkey (.tr)</option></select></label></p>
      <p class="description">فیلتر اضافه است و جای Seed یا Source را نمی‌گیرد. TLD و سیگنال زبان صفحه بررسی می‌شوند.</p>
     </div>
-    <div class="postbox" style="padding:16px"><h2>Limits</h2>
-     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div class="numpo-card"><h2>Limits</h2>
+     <div class="numpo-limits">
       <label>Max pages<br><input type="number" min="1" name="max_pages" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_pages',100));?>"></label>
       <label>Max URLs<br><input type="number" min="1" name="max_urls" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_urls',500));?>"></label>
       <label>Max depth<br><input type="number" min="0" name="max_depth" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_depth',3));?>"></label>
@@ -41,8 +64,8 @@ class Numpo_Admin {
      </div>
     </div>
    </div>
-   <div class="postbox" style="padding:16px;max-width:1100px"><h2>Routing / capabilities</h2><?php echo self::capChecks();?></div>
-   <p><button class="button button-primary">Start discovery</button> <button type="button" class="button" id="numpo-refresh">Refresh</button></p>
+   <div class="numpo-card numpo-wide"><h2>Routing / capabilities</h2><div class="numpo-checks"><?php echo self::capChecks();?></div></div>
+   <div class="numpo-actions"><button class="button button-primary">Start discovery</button><button type="button" class="button" id="numpo-refresh">Refresh</button><span id="numpo-status" class="numpo-status"></span></div>
   </form>
   <div id="numpo-dashboard" style="max-width:1100px"></div>
  </div>
@@ -63,7 +86,7 @@ class Numpo_Admin {
 })();
  </script><?php }
  public static function settings(){if(!current_user_can('manage_options'))return;?>
- <div class="wrap"><h1>Numpo Settings</h1>
+ <div class="wrap" id="numpo-app"><h1>Numpo Settings</h1>
   <?php $diag=Numpo_Diagnostics::check(); ?>
   <div class="postbox" style="padding:16px;max-width:1100px"><h2>Runtime diagnostics</h2>
    <p><strong><?php echo $diag['ok']?'Ready':'Blocked'; ?></strong></p>
@@ -75,7 +98,8 @@ class Numpo_Admin {
   <h2>Engine runtime</h2><table class="form-table">
    <tr><th>Engine mode</th><td><select name="runtime_mode"><option value="bundled" <?php selected(Numpo_Settings::runtime_mode(),'bundled');?>>Bundled (recommended)</option><option value="external" <?php selected(Numpo_Settings::runtime_mode(),'external');?>>External</option></select><p class="description">Bundled runs the Go engine and its PostgreSQL runtime from this plugin package. External keeps the same API contract for a separately managed engine.</p></td></tr>
    <tr><th>Engine URL</th><td><input class="regular-text" name="engine_url" value="<?php echo esc_attr(Numpo_Settings::engine_url());?>" placeholder="http://127.0.0.1:8080"><p class="description">Base URL of the Go engine.</p></td></tr>
-   <tr><th>Browser binary</th><td><input class="regular-text" name="browser_binary" value="<?php echo esc_attr(Numpo_Settings::browser_binary());?>" placeholder="/usr/bin/chromium"><p class="description">Optional. Leave empty to auto-detect Chromium/Chrome. Only needed for browser rendering.</p></td></tr>\n   <tr><th>API Key</th><td><input type="password" class="regular-text" name="api_key" value="<?php echo esc_attr(Numpo_Settings::api_key());?>"><p class="description">Used as Bearer authentication.</p></td></tr>
+   <tr><th>Browser binary</th><td><input class="regular-text" name="browser_binary" value="<?php echo esc_attr(Numpo_Settings::browser_binary());?>" placeholder="/usr/bin/chromium"><p class="description">Optional. Leave empty to auto-detect Chromium/Chrome. Only needed for browser rendering.</p></td></tr>
+   <tr><th>API Key</th><td><input type="password" class="regular-text" name="api_key" value="<?php echo esc_attr(Numpo_Settings::api_key());?>"><p class="description">Used as Bearer authentication.</p></td></tr>
   </table>
   <h2>Discovery defaults</h2><table class="form-table">
    <tr><th>Default project</th><td><input class="regular-text" name="default_project" value="<?php echo esc_attr(Numpo_Settings::default_project());?>"></td></tr>
@@ -87,7 +111,7 @@ class Numpo_Admin {
    <tr><th>Probe cache TTL</th><td><input type="number" min="1" name="probe_ttl_seconds" value="<?php echo esc_attr(Numpo_Settings::int('numpo_probe_ttl_seconds',3600));?>"> seconds</td></tr>
    <tr><th>Scope</th><td><label><input type="checkbox" name="allow_subdomains" value="1" <?php checked(Numpo_Settings::bool('allow_subdomains',false),true);?>> Allow subdomains</label><br><label><input type="checkbox" name="allow_external_links" value="1" <?php checked(Numpo_Settings::bool('allow_external_links',false),true);?>> Allow external links</label></td></tr>
   </table>
-  <h2>Default capabilities</h2><p><?php echo self::capChecks();?></p>
+  <h2>Default capabilities</h2><div class="numpo-checks"><?php echo self::capChecks();?></div>
   <p><button class="button button-primary">Save settings</button></p>
  </form></div><?php }
  public static function save(){
