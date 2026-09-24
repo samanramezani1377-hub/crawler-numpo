@@ -7,7 +7,6 @@ class Numpo_Plugin_Test extends WP_UnitTestCase {
 
     public function test_activation_sets_default_engine_url(): void {
         delete_option('numpo_engine_url');
-        delete_option('numpo_engine_url');
         do_action('activate_numpo/numpo.php');
         $this->assertSame('http://127.0.0.1:8080', get_option('numpo_engine_url'));
     }
