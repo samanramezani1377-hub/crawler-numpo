@@ -33,6 +33,7 @@ class Numpo_Runtime {
   foreach(['base','runtime','logs'] as $k) wp_mkdir_p($p[$k]);
   if(!get_option('numpo_engine_port')) add_option('numpo_engine_port',self::choose_port(),'',false);
   if(!get_option('numpo_api_key')) add_option('numpo_api_key',wp_generate_password(48,true,true), '', false);
+  if(!get_option('numpo_runtime_mode')) add_option('numpo_runtime_mode','bundled','',false);
   if(!get_option('numpo_engine_url')) add_option('numpo_engine_url','http://127.0.0.1:'.self::choose_port());
  }
  public static function ensure_started(){
