@@ -116,3 +116,17 @@
 کاربر باید بتواند یک دامنهٔ اولیه ثبت کند، Crawl را غیرهمزمان اجرا کند، فناوری‌های پشتیبانی‌شده را تشخیص دهد، اطلاعات تماس تجاریِ عمومی را استخراج و نرمال کند، منبع هر نتیجه را نگهداری کند و نتایج را از طریق پنل مشاهده و Export کند.
 
 موتور Go باید در پایان MVP مستقل از WordPress نیز قابل اجرا باشد.\n\n## خروجی داده و Queryability\n\n- [x] تعریف Schema اولیهٔ خروجی\n- [ ] پیاده‌سازی مدل Contact و Email\n- [ ] پیاده‌سازی Technology Detection با Evidence\n- [ ] پیاده‌سازی Page Classification\n- [ ] پیاده‌سازی Business و Social extraction\n- [ ] پیاده‌سازی Technical Signals\n- [ ] طراحی Indexهای واقعی بر اساس Queryهای MVP\n\nمرجع: [OUTPUT-SCHEMA](OUTPUT-SCHEMA.md).\n
+
+## تصمیمات تکمیلی Discovery
+
+- [x] مستقل بودن قابلیت‌های Discovery و Crawl
+- [x] قابل فعال/غیرفعال بودن هر Discovery Source
+- [x] قابل فعال/غیرفعال بودن Subdomain Discovery
+- [x] قرار گرفتن Subdomain Discovery اولیه داخل Deep Crawler
+- [x] قابل فعال/غیرفعال بودن Active Probe
+- [x] قابل فعال/غیرفعال بودن Deep Search
+- [x] قابل فعال/غیرفعال بودن Routing Ruleها
+- [x] ثبت Snapshot تنظیمات مؤثر در Job
+- [ ] پیاده‌سازی Feature/Capability Settings
+- [ ] پیاده‌سازی Routing Rule Engine
+- [ ] پیاده‌سازی Subdomain Discovery داخل Deep Crawler
