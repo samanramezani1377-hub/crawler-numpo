@@ -12,7 +12,7 @@ import(
 )
 
 type SearchProvider struct{Client *http.Client;Template string}
-func NewSearchProvider(t time.Duration,template string)*SearchProvider{return &SearchProvider{&http.Client{Timeout:t},template}}
+func NewSearchProvider(t time.Duration,template string)*SearchProvider{return &SearchProvider{&http.Client{Transport:policy.SafeTransport(),Timeout:t},template}}
 func(p *SearchProvider)Name()string{return "search_provider"}
 func(p *SearchProvider)Discover(ctx context.Context,query string)([]string,error){
  if p.Template==""{return nil,nil}
