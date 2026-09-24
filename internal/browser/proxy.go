@@ -3,12 +3,11 @@ package browser
 import (
  "bufio"
  "context"
- "fmt"
  "io"
  "net"
  "net/http"
- "net/url"
- "strings"\n "time"
+ "strings"
+ "time"
  "github.com/samanramezani1377-hub/crawler-numpo/internal/policy"
 )
 
@@ -43,5 +42,3 @@ func(p *SSRFProxy) serveConn(ctx context.Context,c net.Conn){
  defer resp.Body.Close();_ = resp.Write(c)
 }
 func deadline(ctx context.Context)time.Time{if d,ok:=ctx.Deadline();ok{return d};return time.Now().Add(30*time.Second)}
-var _=fmt.Sprintf
-var _=url.URL{}
