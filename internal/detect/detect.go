@@ -1,0 +1,7 @@
+package detect
+import("regexp";"strings";"github.com/samanramezani1377-hub/crawler-numpo/internal/model")
+var phoneRe=regexp.MustCompile(`(?i)(?:\+?\d[\d\s().-]{7,}\d)`)
+var emailRe=regexp.MustCompile(`(?i)[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}`)
+func Technologies(body,url string)[]model.Technology{l:=strings.ToLower(body);var out []model.Technology;if strings.Contains(l,"wp-content/")||strings.Contains(l,"wp-includes/"){out=append(out,model.Technology{Name:"WordPress",Confidence:.95,Evidence:[]string{"wp-content/wp-includes marker"},URL:url})};if strings.Contains(l,"woocommerce")||strings.Contains(l,"wc-ajax"){out=append(out,model.Technology{Name:"WooCommerce",Confidence:.9,Evidence:[]string{"woocommerce marker"},URL:url})};return out}
+func Contacts(body,url string)[]model.Contact{seen:=map[string]bool{};var out []model.Contact;for _,v:=range emailRe.FindAllString(body,-1){v=strings.ToLower(v);if !seen["email:"+v]{seen["email:"+v]=true;out=append(out,model.Contact{Type:"email",Value:v,NormalizedValue:v,URL:url})}};for _,v:=range phoneRe.FindAllString(body,-1){n:=normalizePhone(v);if len(n)>=8&&!seen["phone:"+n]{seen["phone:"+n]=true;out=append(out,model.Contact{Type:"phone",Value:v,NormalizedValue:n,URL:url})}};return out}
+func normalizePhone(s string)string{var b strings.Builder;for _,r:=range s{if r>='0'&&r<='9'{b.WriteRune(r)}else if r=='+'&&b.Len()==0{b.WriteRune(r)}};return b.String()}
