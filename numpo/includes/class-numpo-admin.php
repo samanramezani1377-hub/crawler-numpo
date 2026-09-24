@@ -8,6 +8,7 @@ final class Numpo_Admin {
         add_action('admin_post_numpo_add_domain',array(__CLASS__,'add_domain'));
         add_action('admin_post_numpo_start_discovery',array(__CLASS__,'start_discovery'));
         add_action('admin_post_numpo_cancel_job',array(__CLASS__,'cancel_job'));
+        add_action('admin_post_numpo_refresh_job',array(__CLASS__,'refresh_job'));
     }
 
     public static function menu() {
@@ -85,8 +86,11 @@ final class Numpo_Admin {
         echo '<h2>Jobs</h2><table class="widefat striped"><thead><tr><th>ID</th><th>Engine Job</th><th>Mode</th><th>Status</th><th>Created</th><th></th></tr></thead><tbody>';
         foreach($jobs as $j){
             echo '<tr><td>'.(int)$j->id.'</td><td>'.esc_html($j->engine_job_id).'</td><td>'.esc_html($j->mode).'</td><td>'.esc_html($j->status).'</td><td>'.esc_html($j->created_at).'</td><td>';
+            if($j->engine_job_id){
+                echo '<form style="display:inline-block;margin-right:6px" method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="numpo_refresh_job"><input type="hidden" name="job_id" value="'.(int)$j->id.'">'.self::nonce('numpo_refresh_job').'<button class="button">Refresh</button></form>';
+            }
             if($j->engine_job_id && !in_array($j->status,array('completed','failed','cancelled'),true)){
-                echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="numpo_cancel_job"><input type="hidden" name="job_id" value="'.(int)$j->id.'">'.self::nonce('numpo_cancel_job').'<button class="button">Cancel</button></form>';
+                echo '<form style="display:inline-block" method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="numpo_cancel_job"><input type="hidden" name="job_id" value="'.(int)$j->id.'">'.self::nonce('numpo_cancel_job').'<button class="button">Cancel</button></form>';
             }
             echo '</td></tr>';
         }
@@ -155,12 +159,30 @@ final class Numpo_Admin {
         wp_safe_redirect(admin_url('admin.php?page=numpo-discovery&project_id='.$project)); exit;
     }
 
+
+    public static function refresh_job() {
+        self::guard(); check_admin_referer('numpo_refresh_job','numpo_nonce');
+        $id=(int)($_POST['job_id']??0);
+        global $wpdb;
+        $job=$wpdb->get_row($wpdb->prepare("SELECT * FROM ".Numpo_DB::table('jobs')." WHERE id=%d",$id));
+        if(!$job) wp_die('Job not found.');
+        if($job->engine_job_id){
+            $r=Numpo_Engine_Client::discovery_job($job->engine_job_id);
+            if(!is_wp_error($r)){
+                $status=sanitize_key($r['status']??$job->status);
+                Numpo_DB::update_job($id,array('status'=>$status,'response_json'=>wp_json_encode($r)));
+            }
+        }
+        wp_safe_redirect(admin_url('admin.php?page=numpo-discovery&project_id='.(int)$job->project_id)); exit;
+    }
+
     public static function cancel_job() {
         self::guard(); check_admin_referer('numpo_cancel_job','numpo_nonce');
         $id=(int)($_POST['job_id']??0);
         global $wpdb;
         $job=$wpdb->get_row($wpdb->prepare("SELECT * FROM ".Numpo_DB::table('jobs')." WHERE id=%d",$id));
-        if($job && $job->engine_job_id){
+        if(!$job) wp_die('Job not found.');
+        if($job->engine_job_id){
             $r=Numpo_Engine_Client::cancel_discovery_job($job->engine_job_id);
             if(!is_wp_error($r)) Numpo_DB::update_job($id,array('status'=>'cancelled','response_json'=>wp_json_encode($r)));
         }
