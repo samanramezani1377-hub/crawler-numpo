@@ -23,7 +23,7 @@ class Numpo_Settings {
  public static function api_key(){return (string)get_option('numpo_api_key','');}
  public static function default_project(){return (string)get_option('numpo_default_project','default');}
  public static function search_url_template(){return (string)get_option('numpo_search_url_template','');}
- public static function int($key,$default){$v=absint(get_option($key,$default));return $v>0?$v:$default;}
+ public static function int($key,$default,$min=1){$v=absint(get_option($key,$default));return $v>=$min?$v:$default;}
  public static function cap($key,$default=true){$v=get_option('numpo_cap_'.$key,null);return $v===null?$default:(bool)$v;}
  public static function bool($key,$default=false){$v=get_option('numpo_'.$key,null);return $v===null?$default:(bool)$v;}
 }
