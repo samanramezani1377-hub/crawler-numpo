@@ -481,13 +481,74 @@ Discovery Queue   → Discovery Workers
 اگر Domain جدید باشد، ابتدا Active Probe انجام می‌شود و بعد بر اساس Classification و Routing Rule تصمیم گرفته می‌شود که آیا وارد Deep Search شود یا فقط به‌عنوان یک Domain کشف‌شده نگهداری شود.
 
 
-## قابلیت‌های قابل فعال/غیرفعال شدن
+## حالت‌های ورود به Discovery
 
-تمام قابلیت‌های Discovery و مسیرهای گسترش Crawl باید به‌صورت مستقل قابل فعال یا غیرفعال شدن باشند. فعال بودن یک قابلیت نباید به‌صورت ضمنی قابلیت دیگری را فعال کند.
+Discovery از نظر محصول دو ورودی اصلی دارد و یک حالت ترکیبی:
 
-حداقل تنظیمات:
+1. **Manual** — کاربر دامنه‌ها یا URLهای اولیه را خودش می‌دهد؛ از طریق ورود دستی یا CSV/Seed List.
+2. **Automatic** — Numpo خودش Candidate پیدا می‌کند؛ با منابع Discovery فعال‌شده مانند Search Provider، Sitemap، robots.txt، لینک‌های Crawl و Subdomain Discovery.
+3. **Hybrid** — ورودی دستی و Discovery خودکار هم‌زمان استفاده می‌شوند و هر دو وارد Candidate Store مشترک می‌شوند.
 
-- `discovery.enabled`
+این سه مورد «حالت عملیاتی Discovery» هستند؛ Active Probe، Classification، Routing و Deep Crawl حالت‌های جایگزین Discovery نیستند و مراحل بعدی Pipeline محسوب می‌شوند.
+
+### جریان حالت‌ها
+
+```text
+                 ┌── Manual Domain/URL List
+                 │
+                 ├── CSV / Seed List
+                 │
+Discovery Input ─┼── Search Provider
+                 │
+                 ├── Sitemap / robots.txt
+                 │
+                 ├── Crawl Links
+                 │
+                 └── Subdomain Discovery
+                         ↓
+                    Candidate Store
+                         ↓
+                 Normalize + Dedup
+                         ↓
+                    Policy / Scope
+                         ↓
+                    Active Probe
+                         ↓
+                Classification / Signals
+                         ↓
+                    Routing Rules
+                         ↓
+                    Deep Crawl
+```
+
+### Manual
+
+در حالت Manual، دامنه‌ها یا URLهای داده‌شده مستقیماً به Candidate Store وارد می‌شوند و از مرحلهٔ Discovery خودکار عبور نمی‌کنند. سپس همان Pipeline مشترک Normalize، Dedup، Policy، Probe و Routing روی آن‌ها اجرا می‌شود.
+
+```text
+Domain List / CSV
+       ↓
+Candidate Store
+       ↓
+Normalize / Dedup / Policy
+       ↓
+Active Probe / Routing / Deep Crawl
+```
+
+بنابراین کاربر می‌تواند فقط یک لیست دامنه بدهد و Numpo هیچ Search Providerای را فراخوانی نکند.
+
+### Automatic
+
+در حالت Automatic، Numpo از منابع Discovery فعال‌شده Candidate تولید می‌کند. هر منبع باید Provenance خود را ثبت کند و خروجی همهٔ منابع به Candidate Store مشترک برود.
+
+### Hybrid
+
+در حالت Hybrid، Manual Seeds و منابع Automatic هم‌زمان فعال هستند. Deduplication باید بین هر دو جریان مشترک باشد؛ یک دامنه یا URL نباید صرفاً به‌دلیل اینکه از دو منبع پیدا شده، دوبار Probe یا Crawl شود.
+
+### منابع Discovery قابل فعال/غیرفعال شدن
+
+کنترل مستقل فقط برای **منابع واقعی Discovery** لازم است:
+
 - `discovery.manual_seeds.enabled`
 - `discovery.csv_import.enabled`
 - `discovery.search_provider.enabled`
@@ -495,75 +556,76 @@ Discovery Queue   → Discovery Workers
 - `discovery.robots.enabled`
 - `discovery.link_discovery.enabled`
 - `discovery.subdomain_from_crawl.enabled`
+
+کنترل‌های زیر نیز در سطح قابلیت محصول وجود دارند:
+
+- `discovery.enabled`
 - `active_probe.enabled`
-- `deep_search.enabled`
-- `deep_search.external_links.enabled`
-- `deep_search.subdomains.enabled`
+- `deep_crawl.enabled`
+- `deep_crawl.external_links.enabled`
+- `detection.wordpress.enabled`
+- `detection.woocommerce.enabled`
+- `extraction.phone.enabled`
+- `extraction.email.enabled`
+- `extraction.business.enabled`
+- `extraction.social.enabled`
+- `page_classification.enabled`
+- `browser_render.enabled`
 
-هر قابلیت باید وضعیت مستقل داشته باشد:
-
-```text
-ENABLED
-DISABLED
-```
+اما اجزای داخلی مانند DNS، TCP، TLS، HTTP/HTTPS، Redirect، Timeout، Retry، Rate Limit، Normalize، Dedup، SSRF Protection و Response Size Limit قابلیت‌های اختیاری محصول نیستند و نباید به‌عنوان Toggle مستقل طراحی شوند؛ این‌ها بخشی از Crawl Core و الزامات ایمنی/درستی سیستم هستند.
 
 ### Subdomain Discovery
 
-در MVP، کشف ساب‌دامین از داخل Deep Crawler انجام می‌شود و یک قابلیت مستقل و قابل تنظیم است:
+در MVP، کشف ساب‌دامین از داخل Deep Crawler یکی از منابع Discovery است. این قابلیت مستقل از Active Probe است:
 
 ```text
 Deep Crawler
    ↓
 Subdomain Discovery [ON/OFF]
    ↓
-New Host Candidate
+Host Candidate
+   ↓
+Normalize / Dedup / Policy
    ↓
 Active Probe [ON/OFF]
    ↓
-Classification
-   ↓
-Routing
+Classification / Routing
 ```
 
-اگر `subdomain_from_crawl` خاموش باشد، Deep Crawler نباید از لینک‌ها و URLهای صفحات Candidate ساب‌دامین جدید تولید کند؛ اما سایر Discoveryها همچنان می‌توانند طبق تنظیم خودشان فعال باشند.
+خاموش بودن Subdomain Discovery فقط مانع تولید Candidate از این مسیر می‌شود. ساب‌دامین‌هایی که از Manual، Search، Sitemap، robots یا منابع دیگر به‌دست آمده‌اند همچنان می‌توانند پردازش شوند.
 
-همچنین قابلیت Subdomain Discovery مستقل از Active Probe است. بنابراین خاموش کردن Active Probe به‌معنی حذف Candidate ساب‌دامین نیست؛ Candidate می‌تواند ثبت شود و طبق Routing/Policy بعدی منتظر پردازش بماند.
+### Routing و استقلال مراحل
 
-### استقلال قابلیت‌ها
+Routing Ruleها همچنان قابل فعال/غیرفعال شدن هستند، اما Routing یک مرحلهٔ تصمیم‌گیری است، نه یک Discovery Source. خاموش بودن یک Rule نباید Candidate یا Classification را حذف کند.
 
 نمونه:
 
 ```text
-Sitemap       = ON
-Robots        = OFF
-Link Discovery= ON
-Subdomain     = OFF
-Active Probe  = ON
-Deep Search   = ON
+ACTIVE + WORDPRESS + WOOCOMMERCE
+        ↓
+Routing Rule
+        ↓
+Deep Crawl
 ```
 
-این ترکیب باید کاملاً معتبر باشد.
+اگر Rule خاموش باشد، Domain و Signalها باقی می‌مانند؛ فقط مسیر Deep Crawl ایجاد نمی‌شود.
 
-تنظیمات باید در سطح مناسب Scope داشته باشند؛ در صورت نیاز می‌توان تنظیمات پیش‌فرض پروژه را با تنظیمات یک Job Override کرد. هر Job باید Snapshot تنظیمات مؤثر خود را نگه دارد تا نتیجهٔ آن بعداً قابل بازتولید و Audit باشد.
+### Snapshot تنظیمات
 
-### Routing نیز قابل تنظیم است
+تنظیمات مؤثر Discovery، Probe، Crawl، Detection و Extraction باید در شروع هر Job Snapshot شوند. این Snapshot برای Reproducibility و Audit استفاده می‌شود.
 
-Routing Ruleها نباید hard-code شوند. هر Rule باید حداقل این مفاهیم را داشته باشد:
-
-- enabled
-- priority
-- conditions
-- action
-- target_queue
-
-مثال:
+اصل مهم:
 
 ```text
-Rule: WordPress + WooCommerce
-enabled = true
-conditions = active AND wordpress AND woocommerce
-action = enqueue
-target_queue = deep_crawl
+Manual OFF ≠ Automatic OFF
+Search OFF ≠ Sitemap OFF
+Subdomain OFF ≠ Active Probe OFF
+Active Probe OFF ≠ Discovery OFF
+Discovery OFF ≠ حذف Candidateهای موجود
 ```
 
-با `enabled = false` همان Classificationها همچنان ذخیره می‌شوند، اما Rule مربوطه مسیر Deep Crawl ایجاد نمی‌کند.
+## اصل نهایی
+
+**Discovery ورودی‌ها را پیدا یا دریافت می‌کند؛ Probe وضعیت شبکه و Signalهای پایه را می‌سنجد؛ Crawl صفحات را دریافت و تحلیل می‌کند؛ Detector/Extractor نتیجهٔ قابل استفاده تولید می‌کند.**
+
+همهٔ این مسیرها باید از Candidate Store و Dedup/Policy مشترک عبور کنند تا حالت Manual، Automatic و Hybrid رفتار سازگار و قابل Audit داشته باشند.
