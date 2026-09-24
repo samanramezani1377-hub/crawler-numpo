@@ -18,7 +18,7 @@ class Numpo_API {
   if($status<200||$status>=300)return new WP_Error($data['error']['code']??'engine_error',$data['error']['message']??'Engine request failed',['status'=>$status]);
   return new WP_REST_Response($data,$status);
  }
- public static function create(WP_REST_Request $r){$p=$r->get_json_params();return self::call('POST','/discovery/jobs',$p);}
+ public static function create(WP_REST_Request $r){$p=$r->get_json_params();if(!is_array($p))$p=$r->get_body_params();return self::call('POST','/discovery/jobs',$p);}
  public static function get(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']));}
  public static function candidates(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']).'/candidates');}
  public static function cancel(WP_REST_Request $r){return self::call('POST','/discovery/jobs/'.rawurlencode($r['id']).'/cancel');}
