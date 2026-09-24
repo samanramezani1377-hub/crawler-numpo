@@ -185,7 +185,22 @@
 - [x] Retry backoff with jitter
 - [x] SSRF tests for IPv4/IPv6/local/reserved targets
 - [x] Optional browser renderer interface without coupling Crawl Core to a browser SDK
-- [ ] Real Chromium/Playwright browser worker
+- [x] Real Chromium browser renderer with isolated process escalation
 - [ ] Full API→DB→queue→probe→routing→crawl→extract→persist→API E2E scenario
 - [ ] Search provider adapters beyond configurable HTTP template
-- [ ] Complete WordPress results dashboard
+- [x] WordPress discovery/results dashboard with resource tables and CSV export
+
+
+## وضعیت UI و اجرای مرورگر — تکمیل فعلی
+
+- [x] صفحه Discovery با Manual / Automatic / Hybrid
+- [x] انتخاب Country / TLD به‌عنوان فیلتر اضافه
+- [x] تنظیم Limits و Capabilities از پنل WordPress
+- [x] نمایش وضعیت Job و منابع Domains / Hosts / Pages / Technologies / Contacts / Business / Social / Classifications / Probes
+- [x] Cancel و CSV Export از پنل
+- [x] تنظیم Engine URL و API Key
+- [x] تنظیم Search Provider template در تنظیمات WordPress
+- [x] تنظیم Scope، Rate Limit و Probe TTL در تنظیمات WordPress
+- [x] Browser escalation اختیاری با Chromium محلی و محدودیت زمان/خروجی
+
+مواردی که عمداً تا بعد از اجرای CI نهایی به‌عنوان Done علامت نخورده‌اند: تست E2E کامل API→DB→queue→probe→routing→crawl→extract→persist→API، تست بار/benchmark، و Detectorهای بیشتر. این موارد نیازمند اجرای واقعی زیرساخت و اعتبارسنجی end-to-end هستند.
