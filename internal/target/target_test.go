@@ -27,6 +27,22 @@ func TestMatchCountryFromSignals(t *testing.T) {
 	if c.Match("https://example.com", `<html lang="en">`, nil, false) {
 		t.Fatal("unexpected country match")
 	}
+
+	cases := []struct {
+		language string
+		country  string
+	}{
+		{language: "nl", country: "nl"},
+		{language: "de", country: "de"},
+		{language: "fr", country: "fr"},
+		{language: "tr", country: "tr"},
+		{language: "en-US", country: "us"},
+	}
+	for _, tc := range cases {
+		if got := inferCountry("https://example.com", `<html lang="`+tc.language+`">`); got != tc.country {
+			t.Fatalf("language %q: expected country %q, got %q", tc.language, tc.country, got)
+		}
+	}
 }
 
 func TestEmptyTarget(t *testing.T) {
