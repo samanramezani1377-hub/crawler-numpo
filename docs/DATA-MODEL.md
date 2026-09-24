@@ -324,9 +324,19 @@ example.com
 
 قابلیت‌های Discovery/Crawl نباید به‌صورت ثابت در کد فعال باشند. تنظیمات باید بتوانند وضعیت هر قابلیت را مستقل نگه دارند.
 
-### Feature / Capability Setting
+### Discovery Mode و Capability Setting
 
-مدل منطقی:
+مدل Discovery باید بین **حالت ورود** و **قابلیت‌های پردازش** تفاوت بگذارد.
+
+حالت ورود Discovery:
+
+- `manual`
+- `automatic`
+- `hybrid`
+
+این مقدار مشخص می‌کند Candidate از کجا وارد جریان شده است و نباید با Queue Type اشتباه شود.
+
+مدل Feature / Capability:
 
 - id
 - project_id
@@ -336,7 +346,7 @@ example.com
 - value
 - updated_at
 
-`key` می‌تواند شامل موارد زیر باشد:
+Capabilityهای سطح محصول:
 
 - `discovery.enabled`
 - `discovery.manual_seeds.enabled`
@@ -347,11 +357,20 @@ example.com
 - `discovery.link_discovery.enabled`
 - `discovery.subdomain_from_crawl.enabled`
 - `active_probe.enabled`
-- `deep_search.enabled`
-- `deep_search.external_links.enabled`
-- `deep_search.subdomains.enabled`
+- `deep_crawl.enabled`
+- `deep_crawl.external_links.enabled`
+- `detection.wordpress.enabled`
+- `detection.woocommerce.enabled`
+- `extraction.phone.enabled`
+- `extraction.email.enabled`
+- `extraction.business.enabled`
+- `extraction.social.enabled`
+- `page_classification.enabled`
+- `browser_render.enabled`
 
-تنظیمات باید به‌گونه‌ای باشند که خاموش بودن یک قابلیت، قابلیت‌های مستقل دیگر را خاموش نکند.
+Primitiveهای داخلی مانند DNS، TCP، TLS، HTTP، Redirect، Retry، Rate Limit، Normalize، Dedup و SSRF Protection Capability مستقل نیستند و بخشی از Crawl Core هستند.
+
+تنظیمات باید به‌گونه‌ای باشند که خاموش بودن یک قابلیت مستقل، قابلیت‌های مستقل دیگر را خاموش نکند.
 
 ### Routing Rule
 
