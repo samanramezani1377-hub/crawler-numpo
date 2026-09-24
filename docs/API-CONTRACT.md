@@ -182,3 +182,114 @@ Capabilityهای سطح محصول باید جدا از منابع Discovery م�
 جزئیات معماری و مرز Capabilityها در [DISCOVERY](DISCOVERY.md) و [ARCHITECTURE](ARCHITECTURE.md) تعریف شده است.
 
 Candidateهای Discovery باید Source و Provenance خود را حفظ کنند. Search Provider فقط Candidate تولید می‌کند و تشخیص نهایی فناوری یا اطلاعات تماس باید توسط Crawl/Detector انجام شود.
+
+
+## Discovery Job Contract — MVP
+
+### ایجاد Discovery Job
+
+POST /api/v1/discovery/jobs
+
+Request:
+
+\`\`\`json
+{
+  "project_id": "project-123",
+  "mode": "manual|automatic|hybrid",
+  "seeds": ["example.com", "https://shop.example.com"],
+  "sources": {
+    "manual_seeds": true,
+    "csv_import": false,
+    "search_provider": true,
+    "sitemap": true,
+    "robots": true,
+    "link_discovery": true,
+    "subdomain_from_crawl": true
+  },
+  "target": {
+    "technologies": ["wordpress", "woocommerce"],
+    "country": "IR",
+    "has_public_phone": true
+  },
+  "limits": {
+    "max_candidates": 10000,
+    "max_pages_per_domain": 100,
+    "max_depth": 3,
+    "max_candidates_per_page": 50
+  }
+}
+\`\`\`
+
+Validation:
+- project_id الزامی است.
+- mode فقط manual، automatic یا hybrid است.
+- manual حداقل یک Seed/CSV می‌خواهد.
+- automatic حداقل یک Source خودکار فعال می‌خواهد.
+- hybrid حداقل یک ورودی دستی یا Source خودکار می‌خواهد.
+- Seedها قبل از ذخیره‌سازی Normalize، Deduplicate و Policy Check می‌شوند.
+- target فقط برای Discovery/Routing است و به‌تنهایی اثبات Technology یا Contact نیست.
+- Limitها سقف ایمن سمت Engine دارند و Client نمی‌تواند Policyهای امنیتی را خاموش کند.
+
+Response:
+
+\`\`\`json
+{
+  "job_id": "discovery_abc123",
+  "status": "queued",
+  "mode": "hybrid",
+  "created_at": "2026-01-01T00:00:00Z"
+}
+\`\`\`
+
+### Discovery Job Status
+
+GET /api/v1/discovery/jobs/{job_id}
+
+حداقل فیلدها:
+- job_id
+- project_id
+- mode
+- status
+- candidate_counts
+- probe_counts
+- crawl_counts
+- error_count
+- created_at
+- started_at
+- completed_at
+- configuration_snapshot
+
+وضعیت Job:
+- queued
+- running
+- completed
+- completed_with_errors
+- failed
+- cancelled
+
+### Candidate API
+
+GET /api/v1/discovery/jobs/{job_id}/candidates
+
+فیلترهای MVP:
+- status
+- source_type
+- normalized_domain
+- queue_type
+- priority
+
+هر Candidate حداقل id، normalized_url، normalized_domain، source_type، status، confidence، discovered_at و provenance مرتبط را برمی‌گرداند.
+
+### قرارداد خطا
+
+\`\`\`json
+{
+  "error": {
+    "code": "invalid_discovery_mode",
+    "message": "Discovery mode is invalid.",
+    "retryable": false
+  }
+}
+\`\`\`
+
+code پایدار است؛ message برای نمایش و لاگ است و نباید تنها مبنای Client logic باشد.
