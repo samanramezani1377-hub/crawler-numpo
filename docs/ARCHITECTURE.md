@@ -433,11 +433,35 @@ Deep Crawl
 این حلقه باید **کنترل‌شده و محدود** باشد و هر Job دارای سقف URL، عمق، Candidate و زمان اجرای مشخص باشد.
 
 
-## ۱۶. قابلیت‌های مستقل و قابل فعال/غیرفعال شدن
+## ۱۶. حالت‌های Discovery و مرز Capabilityها
 
-تمام مسیرهای Discovery، Probe و Deep Crawl باید Feature/Capability مستقل داشته باشند. هیچ Worker یا Provider نباید صرفاً با وجود یک قابلیت دیگر، قابلیت وابسته‌ای را به‌صورت ضمنی فعال کند.
+Discovery از نظر محصول سه حالت عملیاتی دارد:
 
-نمونهٔ تنظیمات:
+- **Manual**: دامنه/URL اولیه توسط کاربر ارائه می‌شود.
+- **Automatic**: Candidateها توسط منابع Discovery پیدا می‌شوند.
+- **Hybrid**: Manual و Automatic هم‌زمان فعال هستند.
+
+این حالت‌ها باید روی یک Candidate Store مشترک همگرا شوند:
+
+```text
+Manual / CSV ─────────┐
+Search / Sitemap ─────┤
+Robots / Links ───────┤→ Candidate Store → Normalize/Dedup/Policy
+Subdomains ───────────┘                              ↓
+                                               Active Probe
+                                                    ↓
+                                            Classification
+                                                    ↓
+                                               Routing
+                                                    ↓
+                                               Deep Crawl
+```
+
+Manual Seed نباید مجبور باشد Search Provider را اجرا کند. در حالت Automatic، منابع Discovery بر اساس تنظیمات فعال می‌شوند. در حالت Hybrid، Dedup مشترک مانع Probe/Crawl تکراری می‌شود.
+
+### Capabilityهای واقعی محصول
+
+کنترل مستقل برای قابلیت‌های سطح محصول تعریف می‌شود، نه برای هر primitive داخلی:
 
 ```text
 discovery.enabled
@@ -450,48 +474,35 @@ discovery.link_discovery.enabled
 discovery.subdomain_from_crawl.enabled
 
 active_probe.enabled
+deep_crawl.enabled
+deep_crawl.external_links.enabled
 
-deep_search.enabled
-deep_search.external_links.enabled
-deep_search.subdomains.enabled
+detection.wordpress.enabled
+detection.woocommerce.enabled
+
+extraction.phone.enabled
+extraction.email.enabled
+extraction.business.enabled
+extraction.social.enabled
+page_classification.enabled
+browser_render.enabled
 ```
 
-### Subdomain Discovery در Deep Crawler
-
-در MVP، Deep Crawler مسئول کشف ساب‌دامین از URLها و لینک‌های مشاهده‌شده است؛ این قابلیت مستقل است:
-
-```text
-Deep Crawler
-    ↓
-[Subdomain Discovery ON?]
-    ├── NO  → continue normal crawl
-    └── YES → Host Candidate
-                  ↓
-             Normalize / Dedup / Policy
-                  ↓
-             Active Probe [ON/OFF]
-                  ↓
-             Classification / Routing
-                  ↓
-             Deep Queue
-```
-
-خاموش بودن Subdomain Discovery فقط مانع تولید Candidate جدید از این مسیر می‌شود. ساب‌دامین‌هایی که از منابع دیگر Discovery به دست آمده‌اند همچنان می‌توانند پردازش شوند.
-
-خاموش بودن Active Probe نیز نباید Candidate را حذف کند؛ فقط مرحلهٔ Probe را غیرفعال می‌کند و رفتار بعدی باید طبق Policy و Routing تنظیم‌شده تعیین شود.
-
-### Snapshot تنظیمات
-
-در شروع هر Job، تنظیمات مؤثر باید Snapshot شوند. بنابراین یک Job در حال اجرا با تغییر تنظیمات پروژه به‌صورت ناگهانی رفتار خود را عوض نمی‌کند، مگر اینکه در آینده قابلیت Dynamic Policy صراحتاً اضافه شود.
+DNS، TCP، TLS، HTTP، HTTPS، Redirect، Timeout، Retry، Rate Limit، URL Normalize، Deduplication، SSRF Protection، Response Size Limit و Queue primitiveهای داخلی Crawl Core هستند و Toggle مستقل محصول نیستند.
 
 ### اصل استقلال
 
 ```text
+Search OFF ≠ Manual OFF
 Sitemap OFF ≠ Robots OFF
-Robots OFF ≠ Link Discovery OFF
 Subdomain Discovery OFF ≠ Deep Crawl OFF
 Active Probe OFF ≠ Discovery OFF
-Search Provider OFF ≠ Manual Seeds OFF
 ```
 
-این استقلال باید در طراحی API، Scheduler و Workerها نیز حفظ شود.
+تغییر یک Capability نباید به‌صورت ضمنی Capability مستقل دیگری را فعال یا غیرفعال کند. تنظیمات مؤثر هر Job در زمان شروع Job Snapshot می‌شوند.
+
+### API و Scheduler
+
+Scheduler باید `discovery mode` را از `queue type` جدا نگه دارد. `manual|automatic|hybrid` مشخص می‌کند Candidate چگونه وارد سیستم شده است؛ `discovery|active_probe|deep_crawl` مشخص می‌کند Candidate در کدام مرحلهٔ پردازش قرار دارد.
+
+این تفکیک اجازه می‌دهد یک Manual Seed دقیقاً همان Pipeline امنیتی و Dedup را طی کند که Candidate حاصل از Search Provider طی می‌کند.
