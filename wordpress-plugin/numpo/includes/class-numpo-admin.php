@@ -67,7 +67,7 @@ class Numpo_Admin {
   <h2>Engine runtime</h2><table class="form-table">
    <tr><th>Engine mode</th><td><select name="runtime_mode"><option value="bundled" <?php selected(Numpo_Settings::runtime_mode(),'bundled');?>>Bundled (recommended)</option><option value="external" <?php selected(Numpo_Settings::runtime_mode(),'external');?>>External</option></select><p class="description">Bundled runs the Go engine and its PostgreSQL runtime from this plugin package. External keeps the same API contract for a separately managed engine.</p></td></tr>
    <tr><th>Engine URL</th><td><input class="regular-text" name="engine_url" value="<?php echo esc_attr(Numpo_Settings::engine_url());?>" placeholder="http://127.0.0.1:8080"><p class="description">Base URL of the Go engine.</p></td></tr>
-   <tr><th>API Key</th><td><input type="password" class="regular-text" name="api_key" value="<?php echo esc_attr(Numpo_Settings::api_key());?>"><p class="description">Used as Bearer authentication.</p></td></tr>
+   <tr><th>Browser binary</th><td><input class="regular-text" name="browser_binary" value="<?php echo esc_attr(Numpo_Settings::browser_binary());?>" placeholder="/usr/bin/chromium"><p class="description">Optional. Leave empty to auto-detect Chromium/Chrome. Only needed for browser rendering.</p></td></tr>\n   <tr><th>API Key</th><td><input type="password" class="regular-text" name="api_key" value="<?php echo esc_attr(Numpo_Settings::api_key());?>"><p class="description">Used as Bearer authentication.</p></td></tr>
   </table>
   <h2>Discovery defaults</h2><table class="form-table">
    <tr><th>Default project</th><td><input class="regular-text" name="default_project" value="<?php echo esc_attr(Numpo_Settings::default_project());?>"></td></tr>
@@ -87,6 +87,7 @@ class Numpo_Admin {
   update_option('numpo_runtime_mode',in_array($_POST['runtime_mode']??'bundled',['bundled','external'],true)?sanitize_text_field(wp_unslash($_POST['runtime_mode'])):'bundled');
   update_option('numpo_engine_url',esc_url_raw(wp_unslash($_POST['engine_url']??'')));
   update_option('numpo_api_key',sanitize_text_field(wp_unslash($_POST['api_key']??'')));
+  update_option('numpo_browser_binary',sanitize_text_field(wp_unslash($_POST['browser_binary']??'')));
   update_option('numpo_default_project',sanitize_text_field(wp_unslash($_POST['default_project']??'default')));
   update_option('numpo_search_url_template',esc_url_raw(wp_unslash($_POST['search_url_template']??'')));
   foreach(['max_pages'=>100,'max_urls'=>500,'max_depth'=>3,'max_candidates_per_page'=>50,'domain_rate_limit_ms'=>250,'probe_ttl_seconds'=>3600] as $k=>$d)update_option('numpo_'.$k,max(1,absint($_POST[$k]??$d)));
