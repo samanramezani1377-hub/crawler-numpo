@@ -103,7 +103,7 @@ func inferCountry(rawURL, body string) string {
 			}
 		}
 	}
-	re := regexp.MustCompile(`(?i)<html[^>]*lang=["']([a-z]{2})(?:-[a-z]{2})?["']`)
+	re := regexp.MustCompile(`(?i)<html[^>]*lang=["']([a-z]{2}(?:-[a-z]{2})?)["']`)
 	if m := re.FindStringSubmatch(body); len(m) == 2 {
 		return languageToCountry(strings.ToLower(m[1]))
 	}
