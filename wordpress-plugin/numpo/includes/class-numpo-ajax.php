@@ -1,7 +1,11 @@
 <?php
 if(!defined('ABSPATH')) exit;
+function numpo_ajax_clean_output(){
+ while(ob_get_level()>0) @ob_end_clean();
+}
 function numpo_ajax_guard(){
  if(!current_user_can('manage_options')||!check_ajax_referer('numpo_admin','nonce',false))wp_send_json_error(['message'=>'Forbidden'],403);
+ if(ob_get_level()===0)ob_start();
 }
 add_action('wp_ajax_numpo_admin_create',function(){
  numpo_ajax_guard();
@@ -14,13 +18,13 @@ add_action('wp_ajax_numpo_admin_create',function(){
  if(is_array($caps))$body['capabilities']=$caps;
  $req=new WP_REST_Request('POST','/numpo/v1/jobs');$req->set_body_params($body);
  $r=Numpo_API::create($req);
- if(is_wp_error($r))wp_send_json_error($r->get_error_message(),$r->get_error_data()['status']??500);
- wp_send_json_success($r->get_data());
+ if(is_wp_error($r)){numpo_ajax_clean_output();wp_send_json_error($r->get_error_message(),$r->get_error_data()['status']??500);}
+ numpo_ajax_clean_output();wp_send_json_success($r->get_data());
 });
 add_action('wp_ajax_numpo_admin_proxy',function(){
  numpo_ajax_guard();
  $path=sanitize_text_field(wp_unslash($_POST['path']??''));
- if($path===''||$path[0]!=='/'||strpos($path,'..')!==false)wp_send_json_error('Invalid path',400);
+ if($path===''||$path[0]!=='/'||strpos($path,'..')!==false){numpo_ajax_clean_output();wp_send_json_error('Invalid path',400);}
  $method=(str_ends_with($path,'/cancel')||$path==='/jobs')?'POST':'GET';
  $req=new WP_REST_Request($method,'/numpo/v1'.$path);
  $parts=explode('/',trim($path,'/')); $r=null;
@@ -33,10 +37,16 @@ add_action('wp_ajax_numpo_admin_proxy',function(){
    } else { $body[$key]=sanitize_text_field($value); }
   }
   $req->set_body_params($body); $r=Numpo_API::create($req);
- } elseif(count($parts)>=2 && $parts[0]==='jobs'){ $req->set_param('id',$parts[1]); if(count($parts)>=3 && $parts[2]==='cancel'){$r=Numpo_API::cancel($req);} elseif(count($parts)>=3 && $parts[2]==='errors'){$r=Numpo_API::errors($req);} elseif(count($parts)>=3){$req->set_param('resource',$parts[2]);$r=Numpo_API::resource($req);} else {$r=Numpo_API::get($req);} }
- if($r===null)wp_send_json_error('Invalid path',400);
- if(is_wp_error($r))wp_send_json_error($r->get_error_message(),$r->get_error_data()['status']??500);
- wp_send_json_success($r->get_data());
+ } elseif(count($parts)>=2 && $parts[0]==='jobs'){
+  $req->set_param('id',$parts[1]);
+  if(count($parts)>=3 && $parts[2]==='cancel'){$r=Numpo_API::cancel($req);}
+  elseif(count($parts)>=3 && $parts[2]==='errors'){$r=Numpo_API::errors($req);}
+  elseif(count($parts)>=3){$req->set_param('resource',$parts[2]);$r=Numpo_API::resource($req);}
+  else {$r=Numpo_API::get($req);}
+ }
+ if($r===null){numpo_ajax_clean_output();wp_send_json_error('Invalid path',400);}
+ if(is_wp_error($r)){numpo_ajax_clean_output();wp_send_json_error($r->get_error_message(),$r->get_error_data()['status']??500);}
+ numpo_ajax_clean_output();wp_send_json_success($r->get_data());
 });
 add_action('wp_ajax_numpo_admin_export',function(){
  if(!current_user_can('manage_options')||!check_ajax_referer('numpo_admin','nonce',false))wp_die('Forbidden',403);
