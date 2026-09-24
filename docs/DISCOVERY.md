@@ -273,3 +273,209 @@ Final Intelligence Result
 **Discovery پیدا می‌کند؛ Crawl تأیید و تحلیل می‌کند.**
 
 هیچ Search Provider یا منبع Discovery نباید مستقیماً نتیجهٔ نهایی Numpo را تعیین کند.
+
+
+## چرخهٔ کشف مجدد از داخل Deep Crawler
+
+Deep Crawler می‌تواند هنگام پردازش یک صفحه، URL یا Host جدید پیدا کند. این مورد باید دوباره وارد لایهٔ Discovery شود و نباید Deep Crawler مستقیماً یک Crawl جدید و بدون کنترل ایجاد کند.
+
+قاعدهٔ اصلی:
+
+```text
+Deep Crawler
+     ↓
+New URL / Host
+     ↓
+Normalize + Deduplicate
+     ↓
+Policy / Scope
+     ↓
+Was this Domain Probed?
+     ├── YES ──► Reuse Probe/Classification
+     │             ↓
+     │          Routing
+     │             ↓
+     │         Deep Queue
+     │
+     └── NO ───► Active Queue
+                    ↓
+                Active Probe
+                    ↓
+              Classification
+                    ↓
+                 Routing
+                    ↓
+                Deep Queue
+```
+
+بنابراین Deep Crawler یک **Discovery Source** نیز محسوب می‌شود.
+
+### اگر دامنه قبلاً Probe شده باشد
+
+فرض کنیم Deep Crawler به این لینک برسد:
+
+```text
+https://shop.example.com/products
+```
+
+ابتدا دامنهٔ نرمال‌شده استخراج می‌شود:
+
+```text
+shop.example.com
+```
+
+اگر برای این Domain یک Probe معتبر وجود داشته باشد، Active Probe دوباره اجرا نمی‌شود و نتیجهٔ قبلی برای Routing استفاده می‌شود.
+
+مثلاً:
+
+```text
+Active = true
+WordPress = true
+WooCommerce = true
+```
+
+سپس URL مناسب مستقیماً وارد Deep Queue می‌شود.
+
+### اگر دامنه قبلاً Probe نشده باشد
+
+URL جدید ابتدا به Active Queue می‌رود:
+
+```text
+New URL
+  ↓
+New Domain
+  ↓
+Active Queue
+  ↓
+Active Probe
+  ↓
+Signals / Classification
+  ↓
+Routing
+  ↓
+Deep Queue
+```
+
+این کار باعث می‌شود Deep Crawler مجبور نباشد خودش منطق Active Check را پیاده کند.
+
+## تفکیک URL Queue و Domain Probe
+
+Domain و URL دو مفهوم متفاوت هستند.
+
+برای مثال:
+
+```text
+https://example.com/about
+https://example.com/contact
+https://example.com/products
+```
+
+همه به یک Domain مربوط هستند:
+
+```text
+example.com
+```
+
+اما URLهای Deep Crawl باید در سطح URL Deduplicate شوند، در حالی که Active Probe عمدتاً در سطح Domain/Host انجام می‌شود.
+
+در نتیجه:
+
+- **Domain/Host Queue** برای Active Probe
+- **URL Queue** برای Deep Crawl
+
+استفاده می‌شود.
+
+یک Domain ممکن است یک‌بار Probe شود ولی تعداد زیادی URL برای Deep Crawl داشته باشد.
+
+## وضعیت Probe
+
+برای جلوگیری از اجرای تکراری Probe، وضعیت Probe باید قابل Query باشد:
+
+```text
+NOT_CHECKED
+QUEUED
+CHECKING
+ACTIVE
+INACTIVE
+ERROR
+```
+
+همراه با:
+
+- last_probe_at
+- probe_result
+- probe_error
+- probe_version
+
+اگر Probe قبلی منقضی شده باشد، Routing می‌تواند دوباره آن را به Active Queue برگرداند.
+
+## بازگشت URLهای جدید به Discovery
+
+Deep Crawler هنگام کشف لینک جدید باید آن را با Provenance ثبت کند:
+
+- source_type = deep_crawl
+- parent_url
+- source_domain
+- discovered_url
+- discovered_at
+- crawl_job_id
+
+بعد از Deduplication مشخص می‌شود که:
+
+1. URL قبلاً Deep Crawl شده است؛
+2. URL جدید است ولی Domain قبلاً Probe شده؛
+3. هم URL و هم Domain جدید هستند.
+
+این سه حالت نباید با یک Queue رفتار شوند.
+
+## جلوگیری از حلقه و انفجار Queue
+
+از آنجا که Deep Crawler می‌تواند Candidate جدید تولید کند، باید محدودیت‌های زیر اعمال شوند:
+
+- Crawl Budget برای هر Job
+- حداکثر Candidate جدید برای هر صفحه
+- حداکثر URL برای هر Domain
+- حداکثر عمق
+- Deduplication اتمیک قبل از Queue
+- Rate Limit مستقل برای هر Domain
+- جلوگیری از تولید بی‌نهایت Candidate از Query Stringهای تکراری
+- TTL یا انقضای Probe در صورت نیاز
+
+هدف این است که:
+
+```text
+Deep Crawl → Discovery → Active Probe → Deep Crawl
+```
+
+یک حلقهٔ کنترل‌شده باشد، نه یک حلقهٔ نامحدود.
+
+## معماری Queue
+
+در مقیاس اولیه می‌توان Queueها را در یک سیستم صف واحد با نوع Job متفاوت پیاده کرد:
+
+```text
+Queue
+ ├── active_probe
+ ├── deep_crawl
+ └── discovery
+```
+
+یا در صورت نیاز به مقیاس بالاتر به Queueهای مستقل تقسیم کرد:
+
+```text
+Active Queue      → Active Workers
+Deep Queue        → Deep Workers
+Discovery Queue   → Discovery Workers
+```
+
+منطق تولید Candidate نباید به انتخاب تکنولوژی Queue وابسته باشد.
+
+## اصل نهایی
+
+**Deep Crawler هر لینک جدید را مستقیماً Crawl نمی‌کند.**
+
+ابتدا آن را به Discovery Pipeline برمی‌گرداند.
+
+اگر Domain قبلاً بررسی شده باشد، نتیجهٔ Probe دوباره استفاده می‌شود و URL می‌تواند وارد Deep Queue شود.
+
+اگر Domain جدید باشد، ابتدا Active Probe انجام می‌شود و بعد بر اساس Classification و Routing Rule تصمیم گرفته می‌شود که آیا وارد Deep Search شود یا فقط به‌عنوان یک Domain کشف‌شده نگهداری شود.
