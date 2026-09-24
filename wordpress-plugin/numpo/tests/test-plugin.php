@@ -7,12 +7,8 @@ class Numpo_Plugin_Test extends WP_UnitTestCase {
 
     public function test_activation_sets_default_engine_url(): void {
         delete_option('numpo_engine_url');
-        $reflection = new ReflectionFunction(function () {});
-        $this->assertNotNull($reflection);
-        update_option('numpo_engine_url', '');
-        if (!get_option('numpo_engine_url')) {
-            update_option('numpo_engine_url', 'http://127.0.0.1:8080');
-        }
+        delete_option('numpo_engine_url');
+        do_action('activate_numpo/numpo.php');
         $this->assertSame('http://127.0.0.1:8080', get_option('numpo_engine_url'));
     }
 
@@ -31,6 +27,7 @@ class Numpo_Plugin_Test extends WP_UnitTestCase {
             '/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)/cancel',
             '/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)/errors',
             '/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)/csv',
+            '/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)/(?P<resource>domains|hosts|pages|technologies|contacts|business|social|classifications|probes)',
         ] as $route) {
             $this->assertArrayHasKey($route, $routes);
         }
@@ -44,3 +41,18 @@ class Numpo_Plugin_Test extends WP_UnitTestCase {
         $this->assertTrue(Numpo_API::permission());
     }
 }
+
+    public function test_csv_forwards_raw_csv_content_type(): void {
+        update_option('numpo_engine_url', 'https://engine.example.test');
+        add_filter('pre_http_request', function ($response, $args, $url) {
+            $this->assertSame('https://engine.example.test/api/v1/discovery/jobs/job-1/csv', $url);
+            $this->assertSame('text/csv', $args['headers']['Content-Type']);
+            $this->assertSame("url\\nhttps://example.com\\n", $args['body']);
+            return ['response' => ['code' => 200], 'body' => '{"imported":1}'];
+        }, 10, 3);
+        $request = new WP_REST_Request('POST', '/numpo/v1/jobs/job-1/csv');
+        $request->set_body("url\\nhttps://example.com\\n");
+        $response = Numpo_API::csv($request);
+        $this->assertInstanceOf(WP_REST_Response::class, $response);
+        $this->assertSame(200, $response->get_status());
+    }
