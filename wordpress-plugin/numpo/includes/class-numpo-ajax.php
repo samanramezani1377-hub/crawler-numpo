@@ -25,7 +25,7 @@ add_action('wp_ajax_numpo_admin_proxy',function(){
  numpo_ajax_guard();
  $path=sanitize_text_field(wp_unslash($_POST['path']??''));
  if($path===''||$path[0]!=='/'||strpos($path,'..')!==false){numpo_ajax_clean_output();wp_send_json_error('Invalid path',400);}
- $method=(str_ends_with($path,'/cancel')||$path==='/jobs')?'POST':'GET';
+ $method=((substr($path,-7)==='/cancel')||$path==='/jobs')?'POST':'GET';
  $req=new WP_REST_Request($method,'/numpo/v1'.$path);
  $parts=explode('/',trim($path,'/')); $r=null;
  if($path==='/jobs' && $method==='POST'){
