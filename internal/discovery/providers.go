@@ -5,6 +5,7 @@ type HTTPProvider struct{Client *http.Client}
 func NewHTTPProvider(t time.Duration)*HTTPProvider{return &HTTPProvider{&http.Client{Transport:policy.SafeTransport(),Timeout:t,CheckRedirect:func(r *http.Request,v []*http.Request)error{if len(v)>=3{return http.ErrUseLastResponse};if policy.ValidateURL(r.URL.String())!=nil{return http.ErrUseLastResponse};return nil}}}}
 func(p *HTTPProvider)get(ctx context.Context,raw string)(string,error){if e:=policy.ValidateURL(raw);e!=nil{return "",e};req,e:=http.NewRequestWithContext(ctx,http.MethodGet,raw,nil);if e!=nil{return "",e};resp,e:=p.Client.Do(req);if e!=nil{return "",e};defer resp.Body.Close();if resp.StatusCode<200||resp.StatusCode>=400{return "",nil};b,e:=io.ReadAll(io.LimitReader(resp.Body,2<<20));return string(b),e}
 func NewSitemapProvider(h *HTTPProvider)*SitemapProvider{return &SitemapProvider{HTTPProvider:h}}
+func NewRobotsProvider(h *HTTPProvider)*RobotsProvider{return &RobotsProvider{HTTPProvider:h}}
 type SitemapProvider struct{*HTTPProvider}
 func(p *SitemapProvider)Name()string{return "sitemap"}
 func(p *SitemapProvider)Discover(ctx context.Context,base string)([]string,error){
