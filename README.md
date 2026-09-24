@@ -147,3 +147,16 @@ Subdomains ──────────┘                         ↓
 در حالت Manual، کاربر فقط لیست دامنه/URL می‌دهد و Search Provider لازم نیست. در حالت Automatic، Numpo خودش Candidate تولید می‌کند. حالت Hybrid هر دو مسیر را روی Candidate Store مشترک ترکیب می‌کند.
 
 Active Probe برای اندازه‌گیری وضعیت شبکه و Signalهای پایه است و دامنه را حذف نمی‌کند. Deep Crawl تحلیل عمیق را انجام می‌دهد. هر دو از Go Crawl Engine و محدودیت‌های امنیتی و Rate Limit مشترک استفاده می‌کنند.
+
+## WordPress bundled runtime
+
+The installable Numpo WordPress package includes the Go engine, versioned migrations, and a pre-seeded embedded PostgreSQL runtime for the supported Linux package target. WordPress starts the engine on demand while the engine owns PostgreSQL lifecycle and migrations.
+
+Runtime state is kept under the WordPress uploads area rather than inside plugin code, so plugin upgrades do not overwrite the database state. Deactivation stops the engine; uninstall removes the disposable runtime/log state and plugin settings while leaving the database state directory available for explicit administrator cleanup.
+
+The WordPress settings page exposes two modes:
+- **Bundled**: plugin-managed Go engine + embedded PostgreSQL.
+- **External**: the same API contract can point at a separately managed engine later without changing crawler code.
+
+The package build is architecture-specific because the bundled PostgreSQL runtime is a native executable dependency. CI builds and validates the installable ZIP rather than committing large binary blobs to Git.
+
