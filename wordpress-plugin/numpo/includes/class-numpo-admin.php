@@ -41,7 +41,7 @@ class Numpo_Admin {
      </div>
     </div>
    </div>
-   <div class="postbox" style="padding:16px;max-width:1100px"><h2>Routing / capabilities</h2><?php echo wp_kses_post(self::capChecks());?></div>
+   <div class="postbox" style="padding:16px;max-width:1100px"><h2>Routing / capabilities</h2><?php echo self::capChecks();?></div>
    <p><button class="button button-primary">Start discovery</button> <button type="button" class="button" id="numpo-refresh">Refresh</button></p>
   </form>
   <div id="numpo-dashboard" style="max-width:1100px"></div>
@@ -87,7 +87,7 @@ class Numpo_Admin {
    <tr><th>Probe cache TTL</th><td><input type="number" min="1" name="probe_ttl_seconds" value="<?php echo esc_attr(Numpo_Settings::int('numpo_probe_ttl_seconds',3600));?>"> seconds</td></tr>
    <tr><th>Scope</th><td><label><input type="checkbox" name="allow_subdomains" value="1" <?php checked(Numpo_Settings::bool('allow_subdomains',false),true);?>> Allow subdomains</label><br><label><input type="checkbox" name="allow_external_links" value="1" <?php checked(Numpo_Settings::bool('allow_external_links',false),true);?>> Allow external links</label></td></tr>
   </table>
-  <h2>Default capabilities</h2><p><?php echo wp_kses_post(self::capChecks());?></p>
+  <h2>Default capabilities</h2><p><?php echo self::capChecks();?></p>
   <p><button class="button button-primary">Save settings</button></p>
  </form></div><?php }
  public static function save(){
