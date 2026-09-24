@@ -318,3 +318,62 @@ example.com
 ```
 
 این تفکیک باید قبل از پیاده‌سازی Queue نهایی شود تا Subdomain و Scope رفتار مبهم نداشته باشند.
+
+
+## تنظیمات قابلیت‌ها و Policy
+
+قابلیت‌های Discovery/Crawl نباید به‌صورت ثابت در کد فعال باشند. تنظیمات باید بتوانند وضعیت هر قابلیت را مستقل نگه دارند.
+
+### Feature / Capability Setting
+
+مدل منطقی:
+
+- id
+- project_id
+- job_id در صورت Override در سطح Job
+- key
+- enabled
+- value
+- updated_at
+
+`key` می‌تواند شامل موارد زیر باشد:
+
+- `discovery.enabled`
+- `discovery.manual_seeds.enabled`
+- `discovery.csv_import.enabled`
+- `discovery.search_provider.enabled`
+- `discovery.sitemap.enabled`
+- `discovery.robots.enabled`
+- `discovery.link_discovery.enabled`
+- `discovery.subdomain_from_crawl.enabled`
+- `active_probe.enabled`
+- `deep_search.enabled`
+- `deep_search.external_links.enabled`
+- `deep_search.subdomains.enabled`
+
+تنظیمات باید به‌گونه‌ای باشند که خاموش بودن یک قابلیت، قابلیت‌های مستقل دیگر را خاموش نکند.
+
+### Routing Rule
+
+مدل منطقی:
+
+- id
+- project_id
+- name
+- enabled
+- priority
+- conditions
+- action
+- target_queue
+- created_at
+- updated_at
+
+Ruleها فقط Routing را کنترل می‌کنند و نباید باعث حذف Domain، Host، URL یا Classification شوند.
+
+### Job Configuration Snapshot
+
+برای هر Job باید تنظیمات مؤثر در زمان شروع Job قابل ثبت باشد. این Snapshot برای Reproducibility و Audit استفاده می‌شود؛ تغییر تنظیمات پروژه در آینده نباید رفتار Job قبلی را مبهم کند.
+
+### Subdomain در مدل Host
+
+Subdomain Discovery از داخل Deep Crawl یک Discovery Source است و خروجی آن Candidate Host محسوب می‌شود. Host جدید باید مانند هر Candidate دیگر Normalize، Deduplicate و Policy Check شود و سپس بر اساس فعال بودن Active Probe و Routing Rules ادامه دهد.
