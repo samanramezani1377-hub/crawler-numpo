@@ -2,23 +2,28 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: numpo
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${NUMPO_POSTGRES_DB:-numpo}
+      POSTGRES_USER: ${NUMPO_POSTGRES_USER:-numpo}
+      POSTGRES_PASSWORD: ${NUMPO_POSTGRES_PASSWORD:?NUMPO_POSTGRES_PASSWORD is required}
     volumes:
       - numpo_pg:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${NUMPO_POSTGRES_USER:-numpo} -d ${NUMPO_POSTGRES_DB:-numpo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
   engine:
     build: .
     environment:
       NUMPO_LISTEN_ADDR: ":8080"
-      NUMPO_DATABASE_URL: "postgres://postgres:postgres@postgres:5432/numpo?sslmode=disable"
-      NUMPO_API_KEY: "\${NUMPO_API_KEY:-change-me}"
+      NUMPO_DATABASE_URL: "postgres://${NUMPO_POSTGRES_USER:-numpo}:${NUMPO_POSTGRES_PASSWORD}@postgres:5432/${NUMPO_POSTGRES_DB:-numpo}?sslmode=disable"
+      NUMPO_API_KEY: "${NUMPO_API_KEY:?NUMPO_API_KEY is required}"
       NUMPO_BROWSER_BINARY: "/usr/bin/chromium"
       NUMPO_BROWSER_TIMEOUT_SECONDS: "30"
       NUMPO_BROWSER_MAX_OUTPUT: "8388608"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
 volumes:
