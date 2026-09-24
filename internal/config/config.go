@@ -22,6 +22,9 @@ type Config struct{
  BrowserBinary string
  BrowserTimeoutSeconds int
  BrowserMaxOutput int
+ EmbeddedPostgres bool
+ EmbeddedRuntimeDir string
+ EmbeddedPostgresCacheDir string
 }
 func Load() Config{
  return Config{
@@ -44,6 +47,9 @@ func Load() Config{
   BrowserBinary:env("NUMPO_BROWSER_BINARY",""),
   BrowserTimeoutSeconds:intEnv("NUMPO_BROWSER_TIMEOUT_SECONDS",30),
   BrowserMaxOutput:intEnv("NUMPO_BROWSER_MAX_OUTPUT",8<<20),
+  EmbeddedPostgres:boolEnv("NUMPO_EMBEDDED_POSTGRES",false),
+  EmbeddedRuntimeDir:env("NUMPO_EMBEDDED_RUNTIME_DIR","./runtime"),
+  EmbeddedPostgresCacheDir:env("NUMPO_EMBEDDED_POSTGRES_CACHE_DIR","./engine/postgres-cache"),
  }
 }
 func env(k,d string)string{if v:=os.Getenv(k);v!=""{return v};return d}

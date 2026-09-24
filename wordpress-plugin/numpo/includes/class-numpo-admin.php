@@ -64,7 +64,8 @@ class Numpo_Admin {
  </script><?php }
  public static function settings(){if(!current_user_can('manage_options'))return;?>
  <div class="wrap"><h1>Numpo Settings</h1><form method="post" action="<?php echo esc_url(admin_url('admin-post.php'));?>"><?php wp_nonce_field('numpo_save');?><input type="hidden" name="action" value="numpo_save">
-  <h2>Engine connection</h2><table class="form-table">
+  <h2>Engine runtime</h2><table class="form-table">
+   <tr><th>Engine mode</th><td><select name="runtime_mode"><option value="bundled" <?php selected(Numpo_Settings::runtime_mode(),'bundled');?>>Bundled (recommended)</option><option value="external" <?php selected(Numpo_Settings::runtime_mode(),'external');?>>External</option></select><p class="description">Bundled runs the Go engine and its PostgreSQL runtime from this plugin package. External keeps the same API contract for a separately managed engine.</p></td></tr>
    <tr><th>Engine URL</th><td><input class="regular-text" name="engine_url" value="<?php echo esc_attr(Numpo_Settings::engine_url());?>" placeholder="http://127.0.0.1:8080"><p class="description">Base URL of the Go engine.</p></td></tr>
    <tr><th>API Key</th><td><input type="password" class="regular-text" name="api_key" value="<?php echo esc_attr(Numpo_Settings::api_key());?>"><p class="description">Used as Bearer authentication.</p></td></tr>
   </table>
@@ -83,6 +84,7 @@ class Numpo_Admin {
  </form></div><?php }
  public static function save(){
   if(!current_user_can('manage_options')||!check_admin_referer('numpo_save'))wp_die('Forbidden');
+  update_option('numpo_runtime_mode',in_array($_POST['runtime_mode']??'bundled',['bundled','external'],true)?sanitize_text_field(wp_unslash($_POST['runtime_mode'])):'bundled');
   update_option('numpo_engine_url',esc_url_raw(wp_unslash($_POST['engine_url']??'')));
   update_option('numpo_api_key',sanitize_text_field(wp_unslash($_POST['api_key']??'')));
   update_option('numpo_default_project',sanitize_text_field(wp_unslash($_POST['default_project']??'default')));

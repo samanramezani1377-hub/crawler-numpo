@@ -4,6 +4,7 @@ class Numpo_Settings {
  public static function init(){ add_action('admin_init',[__CLASS__,'register']); }
  public static function register(){
   register_setting('numpo','numpo_engine_url',['sanitize_callback'=>'esc_url_raw']);
+  register_setting('numpo','numpo_runtime_mode',['sanitize_callback'=>function($v){return in_array($v,['bundled','external'],true)?$v:'bundled';}]);
   register_setting('numpo','numpo_api_key',['sanitize_callback'=>'sanitize_text_field']);
   register_setting('numpo','numpo_default_project',['sanitize_callback'=>'sanitize_text_field']);
   register_setting('numpo','numpo_search_url_template',['sanitize_callback'=>'esc_url_raw']);
@@ -19,6 +20,7 @@ class Numpo_Settings {
   register_setting('numpo','numpo_allow_subdomains',['sanitize_callback'=>function($v){return $v?'1':'0';}]);
   register_setting('numpo','numpo_allow_external_links',['sanitize_callback'=>function($v){return $v?'1':'0';}]);
  }
+ public static function runtime_mode(){return get_option('numpo_runtime_mode','bundled')==='external'?'external':'bundled';}
  public static function engine_url(){return rtrim((string)get_option('numpo_engine_url',''),' /');}
  public static function api_key(){return (string)get_option('numpo_api_key','');}
  public static function default_project(){return (string)get_option('numpo_default_project','default');}
