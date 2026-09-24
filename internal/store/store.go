@@ -9,3 +9,16 @@ func(s *Store)GetDiscoveryJob(ctx context.Context,id string)(map[string]any,erro
 func(s *Store)SetJobStatus(ctx context.Context,id,status string)error{_,e:=s.DB.Exec(ctx,`UPDATE discovery_jobs SET status=$2,updated_at=now() WHERE id=$1`,id,status);return e}
 func(s *Store)UpsertCandidate(ctx context.Context,id,job,u,nu,domain,host,source,parent string,priority int,confidence float64)error{_,e:=s.DB.Exec(ctx,`INSERT INTO candidates(id,discovery_job_id,url,normalized_url,normalized_domain,normalized_host,source_type,parent_url,priority,confidence,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'new') ON CONFLICT(discovery_job_id,normalized_url) DO NOTHING`,id,job,u,nu,domain,host,source,parent,priority,confidence);return e}
 func(s *Store)Candidates(ctx context.Context,job string)([]map[string]any,error){rows,e:=s.DB.Query(ctx,`SELECT id,url,normalized_url,normalized_domain,normalized_host,source_type,parent_url,priority,confidence,status,attempt_count,last_error,discovered_at FROM candidates WHERE discovery_job_id=$1 ORDER BY priority DESC,discovered_at`,job);if e!=nil{return nil,e};defer rows.Close();var out []map[string]any;for rows.Next(){var id,u,nu,d,h,src,parent,status,last string;var p,a int;var c float64;var at time.Time;if e=rows.Scan(&id,&u,&nu,&d,&h,&src,&parent,&p,&c,&status,&a,&last,&at);e!=nil{return nil,e};out=append(out,map[string]any{"id":id,"url":u,"normalized_url":nu,"normalized_domain":d,"normalized_host":h,"source_type":src,"parent_url":parent,"priority":p,"confidence":c,"status":status,"attempt_count":a,"last_error":last,"discovered_at":at})};return out,rows.Err()}
+
+
+func(s *Store)ClaimCandidate(ctx context.Context,job string)(string,string,string,string,error){
+ tx,e:=s.DB.Begin(ctx);if e!=nil{return "","","","",e};defer tx.Rollback()
+ var id,u,domain,status string
+ e=tx.QueryRow(ctx,"SELECT id,url,normalized_domain,status FROM candidates WHERE discovery_job_id=$1 AND status IN ('new','queued','failed_retryable') ORDER BY priority DESC,discovered_at FOR UPDATE SKIP LOCKED LIMIT 1",job).Scan(&id,&u,&domain,&status)
+ if e!=nil{return "","","","",e}
+ if _,e=tx.Exec(ctx,"UPDATE candidates SET status='processing',attempt_count=attempt_count+1 WHERE id=$1",id);e!=nil{return "","","","",e}
+ if e=tx.Commit(ctx);e!=nil{return "","","","",e}
+ return id,u,domain,status,nil
+}
+func(s *Store)SetCandidateStatus(ctx context.Context,id,status,lastError string)error{_,e:=s.DB.Exec(ctx,"UPDATE candidates SET status=$2,last_error=$3 WHERE id=$1",id,status,lastError);return e}
+func(s *Store)FinishJobIfEmpty(ctx context.Context,job string)error{var n int;if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1 AND status IN ('new','queued','processing','failed_retryable')",job).Scan(&n);e!=nil{return e};if n==0{return s.SetJobStatus(ctx,job,"completed")};return nil}
