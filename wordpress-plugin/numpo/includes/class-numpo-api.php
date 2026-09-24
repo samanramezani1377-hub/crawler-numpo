@@ -6,7 +6,7 @@ class Numpo_API {
   register_rest_route('numpo/v1','/jobs',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'create']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'get']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/candidates',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'candidates']]);
-  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/cancel',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'cancel']]);
+  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/cancel',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'cancel']]);register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/errors',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'errors']]);register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/csv',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'csv']]);
  }
  public static function permission(){return current_user_can('manage_options');}
  private static function call($method,$path,$body=null){
@@ -21,5 +21,5 @@ class Numpo_API {
  public static function create(WP_REST_Request $r){$p=$r->get_json_params();if(!is_array($p))$p=$r->get_body_params();return self::call('POST','/discovery/jobs',$p);}
  public static function get(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']));}
  public static function candidates(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']).'/candidates');}
- public static function cancel(WP_REST_Request $r){return self::call('POST','/discovery/jobs/'.rawurlencode($r['id']).'/cancel');}
+ public static function cancel(WP_REST_Request $r){return self::call('POST','/discovery/jobs/'.rawurlencode($r['id']).'/cancel');} public static function errors(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']).'/errors');} public static function csv(WP_REST_Request $r){return self::call('POST','/discovery/jobs/'.rawurlencode($r['id']).'/csv',$r->get_body());}
 }
