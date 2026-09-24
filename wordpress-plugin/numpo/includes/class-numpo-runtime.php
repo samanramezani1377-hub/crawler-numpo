@@ -39,7 +39,7 @@ class Numpo_Runtime {
  public static function ensure_started(){
   if(self::mode()==='external') return;
   if(!is_admin() && !defined('REST_REQUEST')) return;
-  $engine=self::engine_path(); if(!is_file($engine)) return;
+  $engine=self::engine_path(); if(!function_exists('exec')) { self::log_runtime_error('PHP exec() is disabled; Numpo bundled engine cannot start.'); return; } if(!is_file($engine)) { self::log_runtime_error('Bundled Numpo engine is missing.'); return; }
   if(!is_executable($engine)) @chmod($engine,0755);
   if(!is_executable($engine)) return;
   $p=self::paths(); foreach(['base','runtime','logs'] as $k) wp_mkdir_p($p[$k]);
@@ -50,7 +50,7 @@ class Numpo_Runtime {
  private static function mode(){return Numpo_Settings::runtime_mode();}
  public static function start(){
   if(self::mode()==='external') return false;
-  $engine=self::engine_path(); if(!is_file($engine)) return false;
+  if(!function_exists('exec')) { self::log_runtime_error('PHP exec() is disabled; cannot start bundled engine.'); return false; }\n  $engine=self::engine_path(); if(!is_file($engine)) { self::log_runtime_error('Bundled Numpo engine is missing.'); return false; }
   if(!is_executable($engine)) @chmod($engine,0755);
   if(!is_executable($engine)) return false;
   $p=self::paths(); foreach(['base','runtime','logs'] as $k) wp_mkdir_p($p[$k]);
@@ -75,7 +75,7 @@ class Numpo_Runtime {
   update_option('numpo_engine_url','http://127.0.0.1:'.$port,false);
   return true;
  }
- public static function stop(){
+ private static function log_runtime_error($message){ $p=self::paths(); if(!is_dir($p['logs'])) wp_mkdir_p($p['logs']); @file_put_contents($p['logs'].'runtime.log','['.gmdate('c').'] '.$message."\n",FILE_APPEND|LOCK_EX); }\n public static function stop(){
   $p=self::paths(); $pid=is_file($p['pid'])?(int)trim((string)@file_get_contents($p['pid'])):0;
   if($pid){
    @exec('kill -TERM '.(int)$pid.' 2>/dev/null');
