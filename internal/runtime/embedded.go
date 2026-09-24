@@ -17,6 +17,8 @@ type EmbeddedPostgres struct {
 
 func StartEmbeddedPostgres(ctx context.Context, baseDir, cacheDir string) (*EmbeddedPostgres, error) {
 	if err := os.MkdirAll(baseDir, 0700); err != nil { return nil, err }
+	stateDir := filepath.Dir(baseDir)
+	if err := os.MkdirAll(stateDir, 0700); err != nil { return nil, err }
 	if err := os.MkdirAll(cacheDir, 0700); err != nil { return nil, err }
 	port := uint32(55432)
 	cfg := embeddedpostgres.DefaultConfig().
@@ -27,7 +29,7 @@ func StartEmbeddedPostgres(ctx context.Context, baseDir, cacheDir string) (*Embe
 		Password("numpo").
 		CachePath(cacheDir).
 		RuntimePath(filepath.Join(baseDir, "postgres-runtime")).
-		DataPath(filepath.Join(baseDir, "postgres-data")).
+		DataPath(filepath.Join(stateDir, "postgres-data")).
 		StartTimeout(30 * time.Second).
 		Locale("C").
 		Encoding("UTF8")
