@@ -141,4 +141,4 @@ URL:
 - URL منبع
 - وضعیت Crawl
 
-Index نهایی بعد از مشخص شدن Queryهای واقعی تعیین می‌شود.
+Index نهایی بعد از مشخص شدن Queryهای واقعی تعیین می‌شود.\n\n## توسعه مدل برای Schema خروجی\n\nمدل داده باید علاوه بر موجودیت‌های فعلی، امکان نگهداری ساختاریافتهٔ موارد زیر را داشته باشد:\n\n- مشخصات پایهٔ سایت و Crawl Metadata\n- Email و Social Profile\n- Business Identity عمومی\n- نوع و طبقه‌بندی Page\n- شواهد و Provenance برای تشخیص‌های مهم\n- سیگنال‌های WordPress و WooCommerce\n- سیگنال‌های فنی مانند CDN، Sitemap، Canonical و Open Graph\n\nمرجع دقیق فیلدها و تفکیک MVP از قابلیت‌های بعدی در [OUTPUT-SCHEMA](OUTPUT-SCHEMA.md) است.\n\n### Queryability\n\nطراحی باید امکان Query مستقیم برای مواردی مانند WordPress + WooCommerce، داشتن شماره، کشور، شهر، Email و فناوری را فراهم کند؛ بنابراین مقادیر نرمال‌شده و Detectionهای فناوری باید ساختاریافته و قابل Index باشند.\n
