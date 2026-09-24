@@ -629,3 +629,63 @@ Discovery OFF ≠ حذف Candidateهای موجود
 **Discovery ورودی‌ها را پیدا یا دریافت می‌کند؛ Probe وضعیت شبکه و Signalهای پایه را می‌سنجد؛ Crawl صفحات را دریافت و تحلیل می‌کند؛ Detector/Extractor نتیجهٔ قابل استفاده تولید می‌کند.**
 
 همهٔ این مسیرها باید از Candidate Store و Dedup/Policy مشترک عبور کنند تا حالت Manual، Automatic و Hybrid رفتار سازگار و قابل Audit داشته باشند.
+
+
+## قرارداد State Machine — MVP
+
+### Candidate
+
+\`\`\`text
+NEW
+ ↓
+NORMALIZED
+ ↓
+POLICY_CHECKED
+ ├── REJECTED
+ └── QUEUED
+       ↓
+    PROCESSING
+       ├── COMPLETED
+       ├── FAILED_RETRYABLE → QUEUED
+       └── FAILED_FINAL
+\`\`\`
+
+REJECTED به معنی حذف Domain نیست؛ فقط همین Candidate اجازه ورود به آن مسیر را ندارد.
+
+### Domain Probe
+
+\`\`\`text
+NOT_CHECKED
+   ↓
+QUEUED
+   ↓
+CHECKING
+   ├── ACTIVE
+   ├── INACTIVE
+   ├── ERROR_RETRYABLE → QUEUED
+   └── ERROR_FINAL
+\`\`\`
+
+Probe نتیجه قبلی را جایگزین یا Version می‌کند، ولی Domain را حذف نمی‌کند.
+
+### Deep Crawl URL
+
+\`\`\`text
+DISCOVERED
+   ↓
+QUEUED
+   ↓
+FETCHING
+   ├── FETCHED
+   ├── SKIPPED
+   ├── FAILED_RETRYABLE → QUEUED
+   └── FAILED_FINAL
+\`\`\`
+
+### قوانین Transition
+
+- هر Worker فقط Transitionهای مجاز را انجام می‌دهد.
+- Claim یک Work Item باید اتمیک باشد.
+- Worker بعد از Crash نباید Item را برای همیشه در PROCESSING باقی بگذارد؛ Lease/visibility timeout لازم است.
+- completed وضعیت نهایی همان پردازش است؛ Probe منقضی‌شده می‌تواند Probe جدید ایجاد کند.
+- Retry نباید Candidate یا URL تکراری بسازد.
