@@ -1,12 +1,12 @@
 package worker
 import("context";"errors";"strings";"time";"github.com/google/uuid";"github.com/samanramezani1377-hub/crawler-numpo/internal/crawl";"github.com/samanramezani1377-hub/crawler-numpo/internal/detect";"github.com/samanramezani1377-hub/crawler-numpo/internal/probe";"github.com/samanramezani1377-hub/crawler-numpo/internal/policy";"github.com/samanramezani1377-hub/crawler-numpo/internal/store";"github.com/samanramezani1377-hub/crawler-numpo/internal/urlnorm")
-type Worker struct{Store *store.Store;Crawler *crawl.Crawler;Prober *probe.Prober;MaxPages int;MaxCandidatesPerPage int;Lease time.Duration}
+type Worker struct{Store *store.Store;Crawler *crawl.Crawler;Prober *probe.Prober;MaxPages int;MaxCandidatesPerPage int;MaxDepth int;MaxURLs int;Lease time.Duration}
 func(w *Worker)Run(ctx context.Context,job string)error{
- pages:=0
- for pages<w.MaxPages{
+ pages:=0;processed:=0
+ for pages<w.MaxPages&&processed<w.MaxURLs{
   if ctx.Err()!=nil{return ctx.Err()}
   status,e:=w.Store.GetJobStatus(ctx,job);if e!=nil{return e};if status=="cancelled"{return nil};if status=="completed"||status=="failed"{return nil}
-  id,raw,domain,_,e:=w.Store.ClaimCandidate(ctx,job,w.Lease)
+  id,raw,domain,_,e:=w.Store.ClaimCandidate(ctx,job,w.Lease);processed++
   if e!=nil{if errors.Is(e,context.Canceled)||errors.Is(e,context.DeadlineExceeded){return e};return w.Store.FinishJobIfEmpty(ctx,job)}
   pr,e:=w.Prober.Probe(ctx,domain)
   if e!=nil{_ = w.Store.SetCandidateStatus(ctx,id,"completed",pr.ErrorMessage);_ = w.Store.UpsertSignal(ctx,domain,"probe","active","false",0.9,nil,raw);continue}
