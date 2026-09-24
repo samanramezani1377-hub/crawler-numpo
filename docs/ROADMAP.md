@@ -1,68 +1,68 @@
-# Numpo Crawler — Roadmap
+# نومپو — نقشه راه
 
-## Phase 0 — Documentation
+## مرحله صفر — مستندسازی
 
-- [x] Product goal
-- [x] WordPress/Go boundary
-- [x] Deployment modes
-- [x] API contract
-- [x] Data model
-- [x] Responsible crawling constraints
+- [x] هدف محصول
+- [x] مرزبندی WordPress و Go
+- [x] مدل‌های استقرار
+- [x] قرارداد API
+- [x] مدل داده
+- [x] اصول کراول مسئولانه
 
-## Phase 1 — MVP engine
+## مرحله یک — موتور MVP
 
-- [ ] Go module
-- [ ] HTTP fetcher
-- [ ] URL normalization
-- [ ] Domain scope enforcement
-- [ ] Crawl budget
-- [ ] Bounded concurrency
-- [ ] Timeout/retry policy
-- [ ] HTML parser
-- [ ] Contact-page prioritization
-- [ ] Phone extraction
-- [ ] Phone normalization
-- [ ] WordPress detector
-- [ ] WooCommerce detector
-- [ ] Structured persistence
+- [ ] ساخت Go Module
+- [ ] دریافت HTTP
+- [ ] نرمال‌سازی URL
+- [ ] محدود کردن دامنه
+- [ ] Crawl Budget
+- [ ] همزمانی کنترل‌شده
+- [ ] Timeout و Retry
+- [ ] Parser HTML
+- [ ] اولویت صفحات تماس
+- [ ] استخراج شماره
+- [ ] نرمال‌سازی شماره
+- [ ] تشخیص WordPress
+- [ ] تشخیص WooCommerce
+- [ ] ذخیره‌سازی ساختاریافته
 - [ ] Metrics
-- [ ] Unit/integration tests
+- [ ] تست Unit و Integration
 
-## Phase 2 — WordPress control plane
+## مرحله دو — پنل WordPress
 
-- [ ] Plugin skeleton
-- [ ] Project management
-- [ ] Seed management
-- [ ] Engine connection settings
-- [ ] Start/stop jobs
-- [ ] Progress dashboard
-- [ ] Result table
-- [ ] Technology filters
-- [ ] Phone filters
-- [ ] CSV export
+- [ ] اسکلت پلاگین
+- [ ] مدیریت پروژه
+- [ ] مدیریت دامنه‌های اولیه
+- [ ] تنظیم اتصال به موتور
+- [ ] شروع و توقف Job
+- [ ] داشبورد پیشرفت
+- [ ] جدول نتایج
+- [ ] فیلتر فناوری
+- [ ] فیلتر شماره
+- [ ] Export CSV
 
-## Phase 3 — Service separation
+## مرحله سه — جداسازی سرویس
 
-- [ ] Versioned Go HTTP API
-- [ ] API authentication
+- [ ] API نسخه‌بندی‌شده Go
+- [ ] احراز هویت API
 - [ ] PostgreSQL
-- [ ] Docker deployment
-- [ ] Remote engine configuration
-- [ ] Health checks
-- [ ] API compatibility tests
+- [ ] Docker
+- [ ] تنظیم موتور Remote
+- [ ] Health Check
+- [ ] تست سازگاری API
 
-## Phase 4 — Scale
+## مرحله چهار — مقیاس
 
-- [ ] Durable queue
-- [ ] Multiple Go workers
-- [ ] Per-domain scheduling
-- [ ] Global rate control
-- [ ] Worker health
-- [ ] Queue metrics
-- [ ] Retry/dead-letter strategy
-- [ ] Horizontal worker scaling
+- [ ] صف پایدار
+- [ ] چند Worker در Go
+- [ ] زمان‌بندی برای هر دامنه
+- [ ] کنترل Rate کلی
+- [ ] سلامت Workerها
+- [ ] Metrics صف
+- [ ] Retry و Dead Letter
+- [ ] افزایش افقی Workerها
 
-## Phase 5 — Technology intelligence
+## مرحله پنج — هوشمندی فناوری
 
 - [ ] WordPress
 - [ ] WooCommerce
@@ -70,32 +70,32 @@
 - [ ] Joomla
 - [ ] Magento
 - [ ] Laravel
-- [ ] CDN/proxy signals
-- [ ] Analytics signals
-- [ ] Payment technology signals
+- [ ] تشخیص CDN و Proxy
+- [ ] تشخیص سرویس‌های Analytics
+- [ ] تشخیص فناوری‌های پرداخت
 
-Each detector must be independently testable and return evidence.
+هر Detector باید مستقل تست شود و شواهد تشخیص را برگرداند.
 
-## Phase 6 — Browser escalation
+## مرحله شش — اجرای مرورگر در مواقع لازم
 
-- [ ] Detect pages needing rendering
-- [ ] Isolate browser workers
-- [ ] Render only when required
-- [ ] Enforce browser resource/time limits
-- [ ] Compare HTTP and rendered extraction
+- [ ] تشخیص صفحاتی که به Render نیاز دارند
+- [ ] جداسازی Workerهای مرورگر
+- [ ] Render فقط در صورت نیاز
+- [ ] محدودیت منابع مرورگر
+- [ ] مقایسه نتیجه HTTP با Render
 
-## MVP non-goals
+## موارد خارج از MVP
 
-- Internet-wide unrestricted crawling
-- Bypassing authentication or access controls
-- CAPTCHA bypass
-- Stealth/evasion systems
-- Unlimited concurrency
-- Storing entire websites by default
-- Premature distributed infrastructure
+- Crawl بدون محدودیت کل اینترنت
+- دور زدن احراز هویت
+- دور زدن CAPTCHA
+- سیستم‌های پنهان‌کاری یا فرار از محدودیت
+- همزمانی نامحدود
+- ذخیرهٔ پیش‌فرض کل سایت‌ها
+- اضافه کردن زیرساخت توزیع‌شده قبل از نیاز واقعی
 
-## MVP definition of done
+## تعریف پایان MVP
 
-A seed domain can be submitted, crawled asynchronously, classified for supported technologies, scanned for public business contact information, normalized, stored with provenance, and viewed/exported through the control plane.
+کاربر باید بتواند یک دامنهٔ اولیه ثبت کند، Crawl را غیرهمزمان اجرا کند، فناوری‌های پشتیبانی‌شده را تشخیص دهد، اطلاعات تماس تجاریِ عمومی را استخراج و نرمال کند، منبع هر نتیجه را نگهداری کند و نتایج را از طریق پنل مشاهده و Export کند.
 
-The Go engine must also run without WordPress before the architecture is considered complete.
+موتور Go باید در پایان MVP مستقل از WordPress نیز قابل اجرا باشد.
