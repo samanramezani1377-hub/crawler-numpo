@@ -6,7 +6,47 @@ func(s *Server)ServeHTTP(w http.ResponseWriter,r *http.Request){if r.URL.Path=="
 func(s *Server)createJob(w http.ResponseWriter,r *http.Request){defer r.Body.Close();var p struct{ProjectID string `json:"project_id"`;Mode string `json:"mode"`;Seeds []string `json:"seeds"`;Sources map[string]bool `json:"sources"`;Target map[string]any `json:"target"`;Limits map[string]int `json:"limits"`;RoutingRules []map[string]any `json:"routing_rules"`};if e:=json.NewDecoder(http.MaxBytesReader(w,r.Body,s.Cfg.MaxBodyBytes)).Decode(&p);e!=nil{writeErr(w,400,"invalid_json","Invalid JSON.",false);return};if p.ProjectID==""{writeErr(w,400,"invalid_project_id","project_id is required.",false);return};if p.Mode!="manual"&&p.Mode!="automatic"&&p.Mode!="hybrid"{writeErr(w,400,"invalid_discovery_mode","Discovery mode is invalid.",false);return};if p.Mode=="manual"&&len(p.Seeds)==0{writeErr(w,400,"manual_seeds_required","Manual mode requires seeds.",false);return};automatic:=p.Sources["search_provider"]||p.Sources["sitemap"]||p.Sources["robots"]||p.Sources["link_discovery"]||p.Sources["subdomain_from_crawl"];if p.Mode=="automatic"&&!automatic{writeErr(w,400,"automatic_source_required","Automatic mode requires at least one automatic source.",false);return};if p.Mode!="manual"&&len(p.Sources)==0{writeErr(w,400,"automatic_source_required","At least one discovery source is required.",false);return};cfg:=map[string]any{};caps:=capability.Defaults().Map();for k:=range caps{if v,ok:=p.Sources[k];ok{caps[k]=v}};cfg["capabilities"]=caps;for k,v:=range p.Limits{if v<=0{continue};cfg[k]=v};cfg["sources"]=p.Sources;cfg["target"]=p.Target;if len(p.RoutingRules)>0{cfg["routing_rules"]=p.RoutingRules};for k,v:=range map[string]int{"max_pages":s.Cfg.MaxPages,"max_urls":s.Cfg.MaxURLs,"max_depth":s.Cfg.MaxDepth,"max_candidates_per_page":s.Cfg.MaxCandidatesPerPage}{if _,ok:=cfg[k];!ok{cfg[k]=v}};if cfg["max_pages"].(int)>s.Cfg.MaxPages{cfg["max_pages"]=s.Cfg.MaxPages};if cfg["max_urls"].(int)>s.Cfg.MaxURLs{cfg["max_urls"]=s.Cfg.MaxURLs};if cfg["max_depth"].(int)>s.Cfg.MaxDepth{cfg["max_depth"]=s.Cfg.MaxDepth};if cfg["max_candidates_per_page"].(int)>s.Cfg.MaxCandidatesPerPage{cfg["max_candidates_per_page"]=s.Cfg.MaxCandidatesPerPage};id:=uuid.NewString();if e:=s.Store.CreateDiscoveryJobWithConfig(r.Context(),id,p.ProjectID,p.Mode,cfg);e!=nil{writeErr(w,500,"internal_error","Could not create job.",true);return};if len(p.Seeds)>0{if e:=s.Discovery.Seed(r.Context(),id,p.Seeds);e!=nil{_ = s.Store.SetJobStatus(r.Context(),id,"failed");writeErr(w,400,"invalid_seed",e.Error(),false);return}};ctx,cancel:=context.WithCancel(context.Background());s.mu.Lock();s.cancelFuncs[id]=cancel;s.mu.Unlock();go s.runDiscovery(ctx,id,p.Mode,p.Sources,p.Target);write(w,202,map[string]any{"job_id":id,"status":"queued","mode":p.Mode,"created_at":time.Now().UTC()})}
 func(s *Server)runDiscovery(ctx context.Context,job,mode string,sources map[string]bool,target map[string]any){defer func(){s.mu.Lock();delete(s.cancelFuncs,job);s.mu.Unlock()}();_=s.Store.SetJobStatus(ctx,job,"running");if mode!="manual"&&sources["search_provider"]&&s.Cfg.SearchURLTemplate!=""{query:="website";if v,ok:=target["technologies"].([]any);ok&&len(v)>0{var a []string;for _,x:=range v{if q,ok:=x.(string);ok{a=append(a,q)}};if len(a)>0{query=strings.Join(a," ")}};sp:=discovery.NewSearchProvider(time.Duration(s.Cfg.HTTPTimeoutSeconds)*time.Second,s.Cfg.SearchURLTemplate);if urls,e:=sp.Discover(ctx,query);e==nil{_ = s.Discovery.AddURLs(ctx,job,sp.Name(),urls,90)}};cands,e:=s.Store.Candidates(ctx,job);if e==nil{for _,c:=range cands{base,_:=c["url"].(string);if sources["sitemap"]{p:=discovery.NewSitemapProvider(discovery.NewHTTPProvider(time.Duration(s.Cfg.HTTPTimeoutSeconds)*time.Second));if urls,e:=p.Discover(ctx,base);e==nil{_ = s.Discovery.AddURLs(ctx,job,p.Name(),urls,70)}};if sources["robots"]{p:=discovery.NewRobotsProvider(discovery.NewHTTPProvider(time.Duration(s.Cfg.HTTPTimeoutSeconds)*time.Second));if urls,e:=p.Discover(ctx,base);e==nil{_ = s.Discovery.AddURLs(ctx,job,p.Name(),urls,60)}}}};_=s.Worker.Run(ctx,job)}
 func(s *Server)job(w http.ResponseWriter,r *http.Request){parts:=strings.Split(strings.Trim(r.URL.Path,"/"),"/");if len(parts)<5{writeErr(w,404,"not_found","Job not found.",false);return};id:=parts[4];if len(parts)==6&&parts[5]!="candidates"&&parts[5]!="errors"{resource:=parts[5];switch resource{case "domains","hosts","pages","technologies","contacts","business","social","classifications","probes":default:writeErr(w,404,"not_found","Resource not found.",false);return};page:=1;if v,e:=strconv.Atoi(r.URL.Query().Get("page"));e==nil&&v>0{page=v};per:=50;if v,e:=strconv.Atoi(r.URL.Query().Get("per_page"));e==nil&&v>0&&v<=200{per=v};items,total,e:=s.Store.ListJobResource(r.Context(),id,resource,per,(page-1)*per);if e!=nil{writeErr(w,500,"internal_error",e.Error(),true);return};write(w,200,map[string]any{"items":items,"page":page,"per_page":per,"total":total});return};if len(parts)==6&&parts[5]=="candidates"{page:=1;per:=50;if v,e:=strconv.Atoi(r.URL.Query().Get("page"));e==nil&&v>0{page=v};if v,e:=strconv.Atoi(r.URL.Query().Get("per_page"));e==nil&&v>0&&v<=200{per=v};c,total,e:=s.Store.CandidatesPage(r.Context(),id,per,(page-1)*per);if e!=nil{writeErr(w,500,"internal_error",e.Error(),true);return};write(w,200,map[string]any{"items":c,"page":page,"per_page":per,"total":total});return};j,e:=s.Store.GetDiscoveryJob(r.Context(),id);if e!=nil{writeErr(w,404,"not_found","Job not found.",false);return};write(w,200,j)}
-func(s *Server)metrics(w http.ResponseWriter,r *http.Request){var jobs,cands int;_ = s.Store.DB.QueryRow(r.Context(),"SELECT count(*) FROM discovery_jobs").Scan(&jobs);_ = s.Store.DB.QueryRow(r.Context(),"SELECT count(*) FROM candidates").Scan(&cands);w.Header().Set("Content-Type","text/plain; version=0.0.4");w.WriteHeader(200);_,_=w.Write([]byte("numpo_jobs_total "+itoa(jobs)+"\nnumpo_candidates_total "+itoa(cands)+"\n"))}
+func(s *Server)metrics(w http.ResponseWriter,r *http.Request){
+ ctx:=r.Context()
+ var jobs,cands,queued,processing,retryable,dead,domains,pages int
+ _=s.Store.DB.QueryRow(ctx,"SELECT count(*) FROM discovery_jobs").Scan(&jobs)
+ _=s.Store.DB.QueryRow(ctx,"SELECT count(*) FROM candidates").Scan(&cands)
+ _=s.Store.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE status IN ('new','queued')").Scan(&queued)
+ _=s.Store.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE status='processing'").Scan(&processing)
+ _=s.Store.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE status='failed_retryable'").Scan(&retryable)
+ _=s.Store.DB.QueryRow(ctx,"SELECT count(*) FROM candidate_dead_letters").Scan(&dead)
+ _=s.Store.DB.QueryRow(ctx,"SELECT count(*) FROM domains").Scan(&domains)
+ _=s.Store.DB.QueryRow(ctx,"SELECT count(*) FROM pages").Scan(&pages)
+ lines:=[]string{
+  "# HELP numpo_jobs_total Total discovery jobs.",
+  "# TYPE numpo_jobs_total gauge",
+  "numpo_jobs_total "+itoa(jobs),
+  "# HELP numpo_candidates_total Total candidates.",
+  "# TYPE numpo_candidates_total gauge",
+  "numpo_candidates_total "+itoa(cands),
+  "# HELP numpo_candidates_queued Current queued candidates.",
+  "# TYPE numpo_candidates_queued gauge",
+  "numpo_candidates_queued "+itoa(queued),
+  "# HELP numpo_candidates_processing Current processing candidates.",
+  "# TYPE numpo_candidates_processing gauge",
+  "numpo_candidates_processing "+itoa(processing),
+  "# HELP numpo_candidates_retryable Current retryable candidates.",
+  "# TYPE numpo_candidates_retryable gauge",
+  "numpo_candidates_retryable "+itoa(retryable),
+  "# HELP numpo_dead_letters_total Total dead-letter candidates.",
+  "# TYPE numpo_dead_letters_total gauge",
+  "numpo_dead_letters_total "+itoa(dead),
+  "# HELP numpo_domains_total Total domains.",
+  "# TYPE numpo_domains_total gauge",
+  "numpo_domains_total "+itoa(domains),
+  "# HELP numpo_pages_total Total crawled pages.",
+  "# TYPE numpo_pages_total gauge",
+  "numpo_pages_total "+itoa(pages),
+ }
+ w.Header().Set("Content-Type","text/plain; version=0.0.4")
+ w.WriteHeader(http.StatusOK)
+ _,_=w.Write([]byte(strings.Join(lines,"\n")+"\n"))
+}
 func itoa(v int)string{if v==0{return "0"};s:="";for v>0{s=string(rune('0'+v%10))+s;v/=10};return s}
 func write(w http.ResponseWriter,status int,v any){w.Header().Set("Content-Type","application/json");w.WriteHeader(status);_ = json.NewEncoder(w).Encode(v)}
 func writeErr(w http.ResponseWriter,status int,code,message string,retry bool){write(w,status,map[string]any{"error":map[string]any{"code":code,"message":message,"retryable":retry}})}
