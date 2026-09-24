@@ -28,7 +28,8 @@ func(r *ChromiumRenderer)Render(parent context.Context,rawURL string)(Result,err
  select{case r.slots<-struct{}{}:defer func(){<-r.slots}();case <-ctx.Done():return Result{},ctx.Err()}
  if strings.TrimSpace(r.Binary)==""{return Result{},ErrDisabled}
  start:=time.Now()
- cmd:=exec.CommandContext(ctx,r.Binary,"--headless","--disable-gpu","--disable-extensions","--no-first-run","--no-default-browser-check","--dump-dom",rawURL)
+ proxy,err:=StartSSRFProxy(); if err!=nil{return Result{},fmt.Errorf("start browser egress proxy: %w",err)}; defer proxy.Close(); go proxy.Serve(ctx)
+ cmd:=exec.CommandContext(ctx,r.Binary,"--headless","--disable-gpu","--disable-extensions","--no-first-run","--no-default-browser-check","--proxy-server="+proxy.URL(),"--proxy-bypass-list=<-loopback>","--dump-dom",rawURL)
  out,err:=cmd.Output()
  if err!=nil{return Result{},err}
  if len(out)>r.MaxOutput{out=out[:r.MaxOutput]}
