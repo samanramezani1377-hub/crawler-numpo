@@ -1,22 +1,28 @@
-# Numpo Crawler — API Contract
+# نومپو — قرارداد API
 
-The API is the permanent boundary between WordPress and Go.
+API مرز دائمی بین WordPress و Go است.
 
-Base path: /api/v1
+مسیر پایه:
 
-## Authentication
+/api/v1
 
-Remote deployments require service authentication, for example:
+## احراز هویت
 
+در حالت Remote سرویس باید احراز هویت شود.
+
+نمونه:
+
+~~~text
 Authorization: Bearer ENGINE_API_KEY
+~~~
 
-Secrets must never be committed.
+کلیدها نباید داخل Git ذخیره شوند.
 
-## Create crawl job
+## ایجاد Job
 
 POST /api/v1/crawl/jobs
 
-Request:
+نمونه درخواست:
 
 ~~~json
 {
@@ -30,7 +36,7 @@ Request:
 }
 ~~~
 
-Response:
+نمونه پاسخ:
 
 ~~~json
 {
@@ -39,27 +45,44 @@ Response:
 }
 ~~~
 
-The endpoint is asynchronous.
+این Endpoint نباید تا پایان Crawl منتظر بماند.
 
-## Job status
+## وضعیت Job
 
 GET /api/v1/crawl/jobs/{job_id}
 
-Statuses: queued, running, completed, completed_with_errors, failed, cancelled.
+وضعیت‌ها:
 
-Example progress fields: domains_total, domains_completed, pages_fetched, contacts_found, technologies_detected.
+- queued — در صف
+- running — در حال اجرا
+- completed — کامل‌شده
+- completed_with_errors — کامل‌شده همراه خطا
+- failed — شکست‌خورده
+- cancelled — لغوشده
 
-## Cancel
+فیلدهای پیشرفت شامل تعداد دامنه‌ها، دامنه‌های کامل‌شده، صفحات دریافت‌شده، اطلاعات تماس و فناوری‌های شناسایی‌شده هستند.
+
+## لغو Job
 
 POST /api/v1/crawl/jobs/{job_id}/cancel
 
-## Results
+لغو باید جلوی کار جدید را بگیرد و اجازه دهد درخواست‌های در حال اجرا به‌صورت امن تمام شوند.
+
+## نتایج
 
 GET /api/v1/crawl/jobs/{job_id}/results
 
-Initial filters: technology, technology confidence, has_phone, phone type, country, domain, crawl status.
+فیلترهای اولیه:
 
-Example result:
+- فناوری
+- میزان اطمینان فناوری
+- دارای شماره
+- نوع شماره
+- کشور
+- دامنه
+- وضعیت Crawl
+
+نمونه:
 
 ~~~json
 {
@@ -78,7 +101,7 @@ Example result:
 }
 ~~~
 
-## Health
+## سلامت سرویس
 
 GET /api/v1/health
 
@@ -89,11 +112,11 @@ GET /api/v1/health
 }
 ~~~
 
-## Compatibility
+## سازگاری
 
-- API paths are versioned.
-- New optional fields may be added without breaking old clients.
-- Existing field meanings must not silently change.
-- Breaking changes require a new API version.
-- WordPress must handle an unavailable engine gracefully.
-- The Go engine must not depend on WordPress-specific request objects or database schemas.
+- مسیرهای API نسخه‌بندی می‌شوند.
+- اضافه شدن فیلد اختیاری نباید Client قبلی را خراب کند.
+- معنی فیلدهای قبلی نباید بی‌سر و صدا تغییر کند.
+- تغییرات ناسازگار نیازمند نسخهٔ جدید API هستند.
+- WordPress باید قطع بودن موتور را به‌درستی مدیریت کند.
+- Go نباید به ساختار Request یا Database اختصاصی WordPress وابسته باشد.
