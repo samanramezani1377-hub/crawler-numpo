@@ -138,4 +138,4 @@ jobs:
           NUMPO_API_KEY: ci-test-api-key-012345678901234567890123456789
         run: docker compose config --quiet
       - name: Build engine image
-        run: docker build --pull -t numpo-engine:ci
+        run: docker build --pull -t numpo-engine:ci .
