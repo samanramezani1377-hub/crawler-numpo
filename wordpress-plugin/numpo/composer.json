@@ -1,6 +1,8 @@
 {
   "name": "numpo/wordpress-plugin",
   "type": "wordpress-plugin",
+  "description": "Numpo WordPress control-plane plugin for the Numpo crawler engine.",
+  "license": "GPL-2.0-or-later",
   "require-dev": {
     "phpunit/phpunit": "^9.6",
     "yoast/phpunit-polyfills": "^1.1"
