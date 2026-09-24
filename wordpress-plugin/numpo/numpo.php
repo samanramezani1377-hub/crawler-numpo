@@ -8,8 +8,12 @@
 if (!defined('ABSPATH')) exit;
 define('NUMPO_VERSION','0.1.0');
 define('NUMPO_DIR',plugin_dir_path(__FILE__));
+define('NUMPO_MAIN_FILE',__FILE__);
 require_once NUMPO_DIR.'includes/class-numpo-settings.php';
+require_once NUMPO_DIR.'includes/class-numpo-runtime.php';
 require_once NUMPO_DIR.'includes/class-numpo-api.php';
 require_once NUMPO_DIR.'includes/class-numpo-admin.php';
-add_action('plugins_loaded', function(){ Numpo_Settings::init(); Numpo_API::init(); Numpo_Admin::init(); });
-register_activation_hook(__FILE__, function(){ if(!get_option('numpo_engine_url')) update_option('numpo_engine_url','http://127.0.0.1:8080'); });
+add_action('plugins_loaded', function(){ Numpo_Settings::init(); Numpo_Runtime::init(); Numpo_API::init(); Numpo_Admin::init(); });
+register_activation_hook(__FILE__, ['Numpo_Runtime','activate']);
+register_deactivation_hook(__FILE__, ['Numpo_Runtime','stop']);
+register_uninstall_hook(__FILE__, ['Numpo_Runtime','uninstall']);
