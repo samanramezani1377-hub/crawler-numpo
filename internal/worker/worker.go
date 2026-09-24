@@ -20,7 +20,7 @@ func(w *Worker)Run(ctx context.Context,job string)error{
   for _,ct:=range detect.Contacts(p.Body,p.URL){_ = w.Store.UpsertSignal(ctx,domain,"contact",ct.Type,ct.NormalizedValue,1,nil,ct.URL)}
   _ = w.Store.SetCandidateStatus(ctx,id,"completed","")
   if !wp&&!wc{continue}
-  for i,link:=range p.Links{if i>=w.MaxCandidatesPerPage||depth>=w.MaxDepth{break};u,e:=urlnorm.URL(link);if e!=nil{continue};if policy.ValidateURL(link)!=nil{continue};if !strings.EqualFold(u.Hostname(),domain){continue};d,_:=urlnorm.Domain(link);_ = w.Store.UpsertCandidate(ctx,uuid.NewString(),job,link,u.String(),d,u.Hostname(),"deep_crawl",raw,50,0.8)}
+  for i,link:=range p.Links{if i>=w.MaxCandidatesPerPage||depth>=w.MaxDepth{break};u,e:=urlnorm.URL(link);if e!=nil{continue};if policy.ValidateURL(link)!=nil{continue};if !strings.EqualFold(u.Hostname(),domain){continue};d,_:=urlnorm.Domain(link);_ = w.Store.UpsertCandidateDepth(ctx,uuid.NewString(),job,link,u.String(),d,u.Hostname(),"deep_crawl",raw,50,0.8,depth+1)}
  }
  return w.Store.FinishJobIfEmpty(ctx,job)
 }
