@@ -45,12 +45,12 @@ func(p *HTTPSearchProvider)Discover(ctx context.Context,query string)([]string,e
 }
 func parseSearchResults(body string,page int,provider string)[]Result{
  var raw []struct{URL string `json:"url"`;Title string `json:"title"`;Snippet string `json:"snippet"`}
- if json.Unmarshal([]byte(body),&raw)==nil{out:=make([]Result,0,len(raw));for _,r:=range raw{if u,e:=normalizeResultURL(r.URL);e==nil{out=append(out,Result{u,r.Title,r.Snippet,page,provider})}};return dedupResults(out)}
+ if json.Unmarshal([]byte(body),&raw)==nil{out:=make([]Result,0,len(raw));for _,r:=range raw{if u,e:=normalizeResultURL(r.URL);e==nil{out=append(out,Result{URL:u,Title:r.Title,Snippet:r.Snippet,Page:page,Provider:provider})}};return dedupResults(out)}
  var out []Result
- for _,line:=range strings.Split(body,"\n"){v:=strings.TrimSpace(line);if u,e:=normalizeResultURL(v);e==nil{out=append(out,Result{u,"","",page,provider})}}
+ for _,line:=range strings.Split(body,"\n"){v:=strings.TrimSpace(line);if u,e:=normalizeResultURL(v);e==nil{out=append(out,Result{URL:u,Page:page,Provider:provider})}}
  if len(out)>0{return dedupResults(out)}
  doc,e:=html.Parse(strings.NewReader(body));if e!=nil{return nil}
- var walk func(*html.Node);walk=func(n *html.Node){if n.Type==html.ElementNode&&n.Data=="a"{for _,a:=range n.Attr{if a.Key=="href"{if u,e:=normalizeResultURL(strings.TrimSpace(a.Val));e==nil{out=append(out,Result{u,strings.TrimSpace(textContent(n)),"",page,provider})};break}}};for ch:=n.FirstChild;ch!=nil;ch=ch.NextSibling{walk(ch)}}
+ var walk func(*html.Node);walk=func(n *html.Node){if n.Type==html.ElementNode&&n.Data=="a"{for _,a:=range n.Attr{if a.Key=="href"{if u,e:=normalizeResultURL(strings.TrimSpace(a.Val));e==nil{out=append(out,Result{URL:u,Title:strings.TrimSpace(textContent(n)),Page:page,Provider:provider})};break}}};for ch:=n.FirstChild;ch!=nil;ch=ch.NextSibling{walk(ch)}}
  walk(doc);return dedupResults(out)
 }
 func normalizeResultURL(raw string)(string,error){if !strings.HasPrefix(raw,"http://")&&!strings.HasPrefix(raw,"https://"){return "",fmt.Errorf("not an absolute URL")};if e:=policy.ValidateURL(raw);e!=nil{return "",e};u,e:=urlnorm.URL(raw);if e!=nil{return "",e};return u.String(),nil}
