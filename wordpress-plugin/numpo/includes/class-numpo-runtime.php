@@ -39,7 +39,9 @@ class Numpo_Runtime {
  public static function ensure_started(){
   if(self::mode()==='external') return;
   if(!is_admin() && !defined('REST_REQUEST')) return;
-  $engine=self::engine_path(); if(!is_file($engine) || !is_executable($engine)) return;
+  $engine=self::engine_path(); if(!is_file($engine)) return;
+  if(!is_executable($engine)) @chmod($engine,0755);
+  if(!is_executable($engine)) return;
   $p=self::paths(); foreach(['base','runtime','logs'] as $k) wp_mkdir_p($p[$k]);
   $pid=is_file($p['pid'])?(int)trim((string)@file_get_contents($p['pid'])):0;
   if(self::is_running($pid)) return;
@@ -49,6 +51,8 @@ class Numpo_Runtime {
  public static function start(){
   if(self::mode()==='external') return false;
   $engine=self::engine_path(); if(!is_file($engine)) return false;
+  if(!is_executable($engine)) @chmod($engine,0755);
+  if(!is_executable($engine)) return false;
   $p=self::paths(); foreach(['base','runtime','logs'] as $k) wp_mkdir_p($p[$k]);
   $port=self::choose_port(); $key=Numpo_Settings::api_key();
   $env=[
