@@ -42,6 +42,11 @@ jobs:
       - run: go test ./...
         env:
           NUMPO_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/numpo_test?sslmode=disable
+      - name: Run end-to-end and concurrent load tests
+        env:
+          NUMPO_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/numpo_test?sslmode=disable
+        run: |
+          go test ./internal/integration -run 'Test(HTTPDiscoveryEndToEnd|WorkerEndToEndPipeline|PostgresPersistence|ConcurrentWorkerLoad)$' -count=1 -v
       - run: go test -race ./...
         env:
           NUMPO_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/numpo_test?sslmode=disable
@@ -121,6 +126,7 @@ jobs:
           name: numpo-wordpress-plugin
           path: dist/numpo.zip
           if-no-files-found: error
+
   engine-image:
     name: Build engine container
     runs-on: ubuntu-latest
