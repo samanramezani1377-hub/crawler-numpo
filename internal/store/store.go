@@ -22,3 +22,7 @@ func(s *Store)ClaimCandidate(ctx context.Context,job string)(string,string,strin
 }
 func(s *Store)SetCandidateStatus(ctx context.Context,id,status,lastError string)error{_,e:=s.DB.Exec(ctx,"UPDATE candidates SET status=$2,last_error=$3 WHERE id=$1",id,status,lastError);return e}
 func(s *Store)FinishJobIfEmpty(ctx context.Context,job string)error{var n int;if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1 AND status IN ('new','queued','processing','failed_retryable')",job).Scan(&n);e!=nil{return e};if n==0{return s.SetJobStatus(ctx,job,"completed")};return nil}
+
+func(s *Store)UpsertSignal(ctx context.Context,domain,typ,name,value string,confidence float64,evidence []string,source string)error{
+ _,e:=s.DB.Exec(ctx,"INSERT INTO domain_signals(id,normalized_domain,type,name,value,confidence,evidence,source_url) VALUES(gen_random_uuid(),$1,$2,$3,$4,$5,$6::jsonb,$7) ON CONFLICT(normalized_domain,type,name) DO UPDATE SET value=EXCLUDED.value,confidence=EXCLUDED.confidence,evidence=EXCLUDED.evidence,source_url=EXCLUDED.source_url,observed_at=now()",domain,typ,name,value,confidence,"[]",source);return e
+}
