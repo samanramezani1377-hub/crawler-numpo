@@ -26,9 +26,26 @@ Crawl Engine
 Technology / Contact / Business Intelligence
 ```
 
+## اصل مهم: Probe داده را حذف نمی‌کند
+
+Active Domain Probe یک **فیلتر حذفی** نیست؛ یک مرحلهٔ اندازه‌گیری و Classification است. اگر دامنه Active باشد اما WordPress نباشد، دامنه همچنان در مجموعهٔ اصلی باقی می‌ماند و فقط Classificationهای مربوط به آن ثبت نمی‌شوند یا Classification دیگری دریافت می‌کند.
+
+مثلاً یک دامنه می‌تواند هم‌زمان این وضعیت را داشته باشد:
+
+```text
+example.com
+  ├── active
+  ├── wordpress
+  ├── woocommerce
+  ├── cloudflare
+  └── has_public_phone
+```
+
+قواعدی مانند «Active + WordPress» فقط برای تعیین **مسیر مرحلهٔ بعدی** هستند؛ حذف اطلاعات از Domain Store انجام نمی‌شود.
+
 ## دو موتور اصلی
 
-### ۱. Active Domain Discovery
+### ۱. Active Domain Probe / Discovery
 
 هدف: پیدا کردن دامنه‌هایی که واقعاً قابل دسترسی هستند.
 
@@ -46,7 +63,7 @@ Technology / Contact / Business Intelligence
 - timeout
 - inactive
 
-Active Discovery می‌تواند تعداد بسیار زیادی دامنه را با هزینهٔ کم غربال کند.
+Active Probe می‌تواند تعداد بسیار زیادی دامنه را با هزینهٔ کم بررسی کند و برای هر دامنه وضعیت و سیگنال‌های پایه را ثبت کند.
 
 ### ۲. Deep Search
 
@@ -185,6 +202,34 @@ type DiscoveryProvider interface {
 
 Provider نباید به Database یا WordPress وابستگی مستقیم داشته باشد.
 
+## Classification و Routing
+
+Classification باید مستقل از Domain باشد. یک دامنه می‌تواند در چند Technology/Signal هم‌زمان قرار بگیرد و نباید فقط به یک دسته محدود شود.
+
+نمونه:
+
+```text
+All Domains
+   ├── Active
+   ├── WordPress
+   ├── WooCommerce
+   ├── Shopify
+   ├── Has Public Phone
+   └── Unknown Technology
+```
+
+Routing می‌تواند بر اساس شرط‌ها انجام شود:
+
+```text
+ACTIVE
+AND WORDPRESS
+AND WOOCOMMERCE
+        ↓
+   Deep Search
+```
+
+اما دامنه‌ای که شرط را ندارد همچنان در Domain Store و Classificationهای خودش باقی می‌ماند.
+
 ## Pipeline پیشنهادی
 
 ```text
@@ -194,9 +239,11 @@ Candidate Store
         ↓
 Deduplication
         ↓
-Active Check
+Active Probe
         ↓
-Technology Filter
+Classification / Signals
+        ↓
+Routing Rules
         ↓
 Deep Search
         ↓
