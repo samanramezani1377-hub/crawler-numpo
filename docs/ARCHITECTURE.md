@@ -506,3 +506,94 @@ Active Probe OFF ≠ Discovery OFF
 Scheduler باید `discovery mode` را از `queue type` جدا نگه دارد. `manual|automatic|hybrid` مشخص می‌کند Candidate چگونه وارد سیستم شده است؛ `discovery|active_probe|deep_crawl` مشخص می‌کند Candidate در کدام مرحلهٔ پردازش قرار دارد.
 
 این تفکیک اجازه می‌دهد یک Manual Seed دقیقاً همان Pipeline امنیتی و Dedup را طی کند که Candidate حاصل از Search Provider طی می‌کند.
+
+
+## Crawl Scope و Budget — MVP
+
+Scope باید قبل از Queue مشخص شود و در طول Job بدون تغییر خودکار باقی بماند.
+
+### Scope
+
+برای هر Job:
+- allowed_domains
+- allowed_hosts
+- allow_subdomains
+- allow_external_links
+- allowed_schemes
+- max_depth
+- max_pages_per_domain
+- max_urls_total
+
+پیش‌فرض MVP:
+- فقط HTTP/HTTPS
+- External Links خاموش
+- Subdomain فقط در صورت فعال بودن Capability و عبور از Policy
+- هر URL قبل از Queue دوباره Scope Check می‌شود.
+
+### Budget
+
+Budget چهار سطح دارد:
+1. Job Budget — سقف کل URL/صفحه/Candidate
+2. Domain Budget — سقف URL برای هر Domain
+3. Page Discovery Budget — سقف Candidate جدید از هر صفحه
+4. Depth Budget — حداکثر عمق
+
+وقتی Budget تمام شود، Item جدید باید SKIPPED_BUDGET شود؛ نباید با خطای شبکه یا Retry اشتباه گرفته شود.
+
+Budgetها در Job Configuration Snapshot ثبت می‌شوند.
+
+## Retry و Failure Policy — MVP
+
+Retry فقط برای خطاهای موقت یا قابل بازیابی مجاز است.
+
+### Retryable
+- timeout موقت
+- connection reset
+- DNS موقت
+- HTTP 429
+- خطاهای 5xx قابل بازیابی
+
+### Non-retryable
+- URL نامعتبر
+- SSRF/Private Network rejection
+- Scheme غیرمجاز
+- Policy rejection
+- پاسخ دائمی 4xx مانند 404
+- محدودیت Budget
+
+### Backoff
+
+Retry باید Exponential Backoff با Jitter داشته باشد. تعداد Retry و حداکثر تأخیر محدود و قابل Snapshot هستند.
+
+Policy اولیه MVP:
+- حداکثر 3 Retry
+- Backoff پایه 1 ثانیه
+- سقف Backoff 30 ثانیه
+- رعایت Retry-After برای 429 در صورت معتبر بودن
+
+این اعداد Configuration MVP هستند، نه قرارداد غیرقابل تغییر API.
+
+### Failure Categories
+
+- network
+- dns
+- timeout
+- http
+- policy
+- parse
+- resource_limit
+- internal
+
+هر خطا باید retryable و attempt_count داشته باشد.
+
+### Final Failure
+
+\`\`\`text
+Retryable Failure
+      ↓
+Retry Budget
+      ├── available → Backoff → Queue
+      └── exhausted → FAILED_FINAL
+\`\`\`
+
+Final Failure باید قابل گزارش و Query باشد، اما نباید باعث توقف Jobهای مستقل شود.
