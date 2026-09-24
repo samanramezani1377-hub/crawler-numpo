@@ -174,3 +174,46 @@ Index نهایی بعد از مشخص شدن Queryهای واقعی تعیین �
 - crawl_job_id
 
 Candidate باید قبل از Crawl از Deduplication و Policy/SSRF checks عبور کند. جزئیات جریان در [DISCOVERY](DISCOVERY.md) تعریف شده است.
+
+
+## اصل نگهداری Domain و Classification
+
+Domain موجودیت اصلی و پایدار است و نتیجهٔ یک Probe نباید باعث حذف آن شود.
+
+Classificationها و Signalها باید به‌صورت ساختاریافته و مستقل ذخیره شوند تا یک دامنه بتواند هم‌زمان چند دسته داشته باشد.
+
+نمونه:
+
+```text
+Domain: example.com
+
+Signals / Classifications:
+- active
+- wordpress
+- woocommerce
+- cloudflare
+- has_public_phone
+```
+
+### Domain Signal
+
+- id
+- domain_id
+- type
+- name
+- value
+- confidence
+- evidence
+- source_url
+- detected_at
+
+این مدل اجازه می‌دهد Queryهایی مانند موارد زیر بدون حذف داده انجام شوند:
+
+- همهٔ دامنه‌های Active
+- Active + WordPress
+- Active + WordPress + WooCommerce
+- Active + Shopify
+- Active با Technology نامشخص
+- Active دارای شمارهٔ عمومی
+
+Routing Rule فقط تعیین می‌کند Candidate به کدام مرحلهٔ بعدی برود؛ Routing نباید Domain را حذف کند.
