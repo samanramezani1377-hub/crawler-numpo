@@ -26,6 +26,7 @@ func main(){
  defer cancel()
  var embedded *runtime.EmbeddedPostgres
  if cfg.EmbeddedPostgres {
+  var e error
   embedded,e=runtime.StartEmbeddedPostgres(root,cfg.EmbeddedRuntimeDir,cfg.EmbeddedPostgresCacheDir);if e!=nil{log.Fatal(e)}
   defer embedded.Stop()
   cfg.DatabaseURL=embedded.DSN
