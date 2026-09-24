@@ -1,6 +1,8 @@
 package worker
 import("context";"errors";"encoding/json";"net/url";"net/http";"strings";"strconv";"time";"github.com/google/uuid";"github.com/samanramezani1377-hub/crawler-numpo/internal/model";"github.com/samanramezani1377-hub/crawler-numpo/internal/crawl";"github.com/samanramezani1377-hub/crawler-numpo/internal/detect";"github.com/samanramezani1377-hub/crawler-numpo/internal/probe";"github.com/samanramezani1377-hub/crawler-numpo/internal/policy";"github.com/samanramezani1377-hub/crawler-numpo/internal/routing";"github.com/samanramezani1377-hub/crawler-numpo/internal/store";"github.com/samanramezani1377-hub/crawler-numpo/internal/urlnorm";"github.com/samanramezani1377-hub/crawler-numpo/internal/target")
-type Worker struct{Store *store.Store;Crawler *crawl.Crawler;Prober *probe.Prober;MaxPages int;MaxCandidatesPerPage int;MaxDepth int;MaxURLs int;Lease time.Duration;DomainRateLimit time.Duration;ProbeTTL time.Duration;AllowSubdomains bool;AllowExternalLinks bool}
+type Crawler interface{Fetch(context.Context,string)(crawl.Page,error)}
+type Prober interface{Probe(context.Context,string)(model.ProbeResult,error)}
+type Worker struct{Store *store.Store;Crawler Crawler;Prober Prober;MaxPages int;MaxCandidatesPerPage int;MaxDepth int;MaxURLs int;Lease time.Duration;DomainRateLimit time.Duration;ProbeTTL time.Duration;AllowSubdomains bool;AllowExternalLinks bool}
 func(w *Worker)Run(ctx context.Context,job string)error{pages:=0;processed:=0
  maxPages,maxURLs,maxDepth,maxCandidates:=w.MaxPages,w.MaxURLs,w.MaxDepth,w.MaxCandidatesPerPage
  for pages<maxPages&&processed<maxURLs{
