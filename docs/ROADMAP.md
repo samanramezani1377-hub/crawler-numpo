@@ -7,6 +7,9 @@
 - [x] تعریف Deep Search
 - [x] تعریف Candidate و Provenance
 - [x] طراحی Discovery API اولیه
+- [x] تعریف حالت‌های Discovery: Manual / Automatic / Hybrid
+- [x] تفکیک Discovery Source از Capabilityهای داخلی Crawl
+- [x] تعریف جریان مشترک Manual و Automatic به Candidate Store
 
 - [x] هدف محصول
 - [x] مرزبندی WordPress و Go
@@ -17,7 +20,7 @@
 
 ## مرحله یک — Discovery و موتور MVP
 
-- [ ] طراحی Candidate و Discovery Job
+- [ ] طراحی Candidate و Discovery Job با پشتیبانی از modeهای manual/automatic/hybrid
 - [ ] Active Domain Check
 - [ ] Seed List / CSV Import
 - [ ] robots.txt و Sitemap Discovery
