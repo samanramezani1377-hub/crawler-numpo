@@ -17,6 +17,9 @@ type Config struct{
  ProbeTTLSeconds int
  AllowSubdomains bool
  AllowExternalLinks bool
+ BrowserBinary string
+ BrowserTimeoutSeconds int
+ BrowserMaxOutput int
 }
 func Load() Config{
  return Config{
@@ -34,6 +37,9 @@ func Load() Config{
   ProbeTTLSeconds:intEnv("NUMPO_PROBE_TTL_SECONDS",3600),
   AllowSubdomains:boolEnv("NUMPO_ALLOW_SUBDOMAINS",false),
   AllowExternalLinks:boolEnv("NUMPO_ALLOW_EXTERNAL_LINKS",false),
+  BrowserBinary:env("NUMPO_BROWSER_BINARY",""),
+  BrowserTimeoutSeconds:intEnv("NUMPO_BROWSER_TIMEOUT_SECONDS",30),
+  BrowserMaxOutput:intEnv("NUMPO_BROWSER_MAX_OUTPUT",8<<20),
  }
 }
 func env(k,d string)string{if v:=os.Getenv(k);v!=""{return v};return d}
