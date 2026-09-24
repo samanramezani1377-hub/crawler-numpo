@@ -1,6 +1,6 @@
 package store
 
-import("context";"time";"github.com/jackc/pgx/v5/pgxpool")
+import("context";"encoding/json";"time";"github.com/jackc/pgx/v5/pgxpool")
 type Store struct{DB *pgxpool.Pool}
 func New(ctx context.Context,dsn string)(*Store,error){db,e:=pgxpool.New(ctx,dsn);if e!=nil{return nil,e};if e=db.Ping(ctx);e!=nil{db.Close();return nil,e};return &Store{db},nil}
 func(s *Store)Close(){s.DB.Close()}
@@ -24,5 +24,5 @@ func(s *Store)SetCandidateStatus(ctx context.Context,id,status,lastError string)
 func(s *Store)FinishJobIfEmpty(ctx context.Context,job string)error{var n int;if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1 AND status IN ('new','queued','processing','failed_retryable')",job).Scan(&n);e!=nil{return e};if n==0{return s.SetJobStatus(ctx,job,"completed")};return nil}
 
 func(s *Store)UpsertSignal(ctx context.Context,domain,typ,name,value string,confidence float64,evidence []string,source string)error{
- _,e:=s.DB.Exec(ctx,"INSERT INTO domain_signals(id,normalized_domain,type,name,value,confidence,evidence,source_url) VALUES(gen_random_uuid(),$1,$2,$3,$4,$5,$6::jsonb,$7) ON CONFLICT(normalized_domain,type,name) DO UPDATE SET value=EXCLUDED.value,confidence=EXCLUDED.confidence,evidence=EXCLUDED.evidence,source_url=EXCLUDED.source_url,observed_at=now()",domain,typ,name,value,confidence,"[]",source);return e
+ b,_:=json.Marshal(evidence);_,e:=s.DB.Exec(ctx,"INSERT INTO domain_signals(id,normalized_domain,type,name,value,confidence,evidence,source_url) VALUES(gen_random_uuid(),$1,$2,$3,$4,$5,$6::jsonb,$7) ON CONFLICT(normalized_domain,type,name) DO UPDATE SET value=EXCLUDED.value,confidence=EXCLUDED.confidence,evidence=EXCLUDED.evidence,source_url=EXCLUDED.source_url,observed_at=now()",domain,typ,name,value,confidence,string(b),source);return e
 }
