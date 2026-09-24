@@ -1,0 +1,7 @@
+package worker
+
+import("context";"errors";"net/url";"strings";"time";"github.com/google/uuid";"github.com/samanramezani1377-hub/crawler-numpo/internal/crawl";"github.com/samanramezani1377-hub/crawler-numpo/internal/policy";"github.com/samanramezani1377-hub/crawler-numpo/internal/store";"github.com/samanramezani1377-hub/crawler-numpo/internal/urlnorm")
+type Worker struct{Store *store.Store;Crawler *crawl.Crawler;MaxDepth int;MaxPages int;MaxCandidatesPerPage int}
+func(w *Worker)Run(ctx context.Context,job string)error{pages:=0;for pages<w.MaxPages{if ctx.Err()!=nil{return ctx.Err()};id,raw,domain,_,e:=w.Store.ClaimCandidate(ctx,job);if e!=nil{if errors.Is(e,context.Canceled)||errors.Is(e,context.DeadlineExceeded){return e};_ = w.Store.FinishJobIfEmpty(ctx,job);return nil};p,e:=w.Crawler.Fetch(ctx,raw);if e!=nil{_ = w.Store.SetCandidateStatus(ctx,id,"failed_retryable",e.Error());continue};pages++;_ = w.Store.SetCandidateStatus(ctx,id,"completed","");for i,link:=range p.Links{if i>=w.MaxCandidatesPerPage{break};u,e:=urlnorm.URL(link);if e!=nil{continue};if policy.ValidateURL(link)!=nil{continue};if strings.ToLower(u.Hostname())!=strings.ToLower(domain){continue};d,_:=urlnorm.Domain(link);_ = w.Store.UpsertCandidate(ctx,uuid.NewString(),job,link,u.String(),d,u.Hostname(),"deep_crawl",raw,50,0.8)}};return w.Store.FinishJobIfEmpty(ctx,job)}
+func SameHost(a,b string)bool{ua,e:=url.Parse(a);if e!=nil{return false};ub,e:=url.Parse(b);if e!=nil{return false};return strings.EqualFold(ua.Hostname(),ub.Hostname())}
+var _=time.Second
