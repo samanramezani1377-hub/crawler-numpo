@@ -18,7 +18,13 @@ func(s *Store)ClaimCandidate(ctx context.Context,job string,lease time.Duration)
  if e=tx.Commit(ctx);e!=nil{return "","","","",e};return id,u,domain,status,nil
 }
 func(s *Store)SetCandidateStatus(ctx context.Context,id,status,lastError string)error{_,e:=s.DB.Exec(ctx,`UPDATE candidates SET status=$2,last_error=$3,lease_until=NULL,completed_at=CASE WHEN $2 IN ('completed','failed_final') THEN now() ELSE completed_at END WHERE id=$1`,id,status,lastError);return e}
-func(s *Store)ScheduleRetry(ctx context.Context,id,lastError string,attempt int)error{delay:=time.Second*time.Duration(1<<(attempt-1));if delay>30*time.Second{delay=30*time.Second};_,e:=s.DB.Exec(ctx,`UPDATE candidates SET status='failed_retryable',last_error=$2,next_attempt_at=now()+$3::interval,lease_until=NULL WHERE id=$1`,id,lastError,delay.String());return e}
+func(s *Store)ScheduleRetry(ctx context.Context,id,lastError string,attempt int)error{
+ var n int
+ if e:=s.DB.QueryRow(ctx,"SELECT attempt_count FROM candidates WHERE id=$1",id).Scan(&n);e!=nil{return e}
+ if n>=3{return s.SetCandidateStatus(ctx,id,"failed_final",lastError)}
+ delay:=time.Second*time.Duration(1<<(n-1));if delay>30*time.Second{delay=30*time.Second}
+ _,e:=s.DB.Exec(ctx,`UPDATE candidates SET status='failed_retryable',last_error=$2,next_attempt_at=now()+$3::interval,lease_until=NULL WHERE id=$1`,id,lastError,delay.String());return e
+}
 func(s *Store)FinishJobIfEmpty(ctx context.Context,job string)error{var n int;if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1 AND status IN ('new','queued','processing','failed_retryable')",job).Scan(&n);e!=nil{return e};if n==0{return s.SetJobStatus(ctx,job,"completed")};return nil}
 func(s *Store)UpsertSignal(ctx context.Context,domain,typ,name,value string,confidence float64,evidence []string,source string)error{b,_:=json.Marshal(evidence);_,e:=s.DB.Exec(ctx,"INSERT INTO domain_signals(id,normalized_domain,type,name,value,confidence,evidence,source_url) VALUES(gen_random_uuid(),$1,$2,$3,$4,$5,$6::jsonb,$7) ON CONFLICT(normalized_domain,type,name) DO UPDATE SET value=EXCLUDED.value,confidence=EXCLUDED.confidence,evidence=EXCLUDED.evidence,source_url=EXCLUDED.source_url,observed_at=now()",domain,typ,name,value,confidence,string(b),source);return e}
 var _=pgx.ErrNoRows
