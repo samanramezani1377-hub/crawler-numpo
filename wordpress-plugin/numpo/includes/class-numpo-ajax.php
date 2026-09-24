@@ -4,8 +4,21 @@ function numpo_ajax_clean_output(){
  while(ob_get_level()>0) @ob_end_clean();
 }
 function numpo_ajax_guard(){
- if(!current_user_can('manage_options')||!check_ajax_referer('numpo_admin','nonce',false))wp_send_json_error(['message'=>'Forbidden'],403);
  if(ob_get_level()===0)ob_start();
+ static $registered=false;
+ if(!$registered){
+  $registered=true;
+  register_shutdown_function(function(){
+   $e=error_get_last();
+   if(!$e||!in_array($e['type'],[E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR],true))return;
+   while(ob_get_level()>0)@ob_end_clean();
+   status_header(500);
+   nocache_headers();
+   header('Content-Type: application/json; charset=utf-8');
+   echo wp_json_encode(['success'=>false,'data'=>['message'=>'Numpo AJAX fatal error','error'=>trim(($e['message']??'').' at '.($e['file']??'').' line '.($e['line']??''))]],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+  });
+ }
+ if(!current_user_can('manage_options')||!check_ajax_referer('numpo_admin','nonce',false))wp_send_json_error(['message'=>'Forbidden'],403);
 }
 add_action('wp_ajax_numpo_admin_create',function(){
  numpo_ajax_guard();
