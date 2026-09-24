@@ -1,96 +1,124 @@
-# Numpo Crawler
+# کراولر نومپو
 
-Numpo is a planned web-crawling and website-intelligence system for discovering public website information, detecting technologies, and extracting publicly displayed business contact information.
+نومپو یک سامانهٔ کراول و هوشمندی وب برای کشف اطلاعات عمومی سایت‌ها، تشخیص فناوری‌های استفاده‌شده و استخراج اطلاعات تماس تجاریِ عمومی است.
 
-## Architecture
+## معماری
 
 ~~~text
-WordPress Plugin
+پلاگین وردپرس
       |
- Versioned API
+    API نسخه‌بندی‌شده
       |
       v
-Go Crawler
-  |   |   |
-Queue Fetcher Detection/Extraction
+موتور کراولر Go
+  |    |    |
+صف  دریافت  تشخیص/استخراج
       |
       v
  PostgreSQL
 ~~~
 
-The key decision is that Go is the crawler engine and WordPress is the control plane/UI. The plugin talks to a versioned API, never to Go internals. This allows the Go engine to move from the same VPS to a separate crawler server later without a rewrite.
+تصمیم اصلی این پروژه این است که **Go موتور اصلی کراولر** باشد و **WordPress نقش پنل مدیریت و کنترل** را داشته باشد. پلاگین وردپرس فقط از طریق API نسخه‌بندی‌شده با موتور ارتباط دارد و به کد داخلی Go وابسته نیست. بنابراین بعداً می‌توان موتور Go را بدون بازنویسی هستهٔ پلاگین از همان VPS جدا و روی سرور مستقل اجرا کرد.
 
-## Deployment path
+## مسیر توسعه و استقرار
 
-Phase 1: WordPress -> local API -> Go -> database
+مرحله ۱:
 
-Phase 2: WordPress -> HTTPS API -> Go -> database
+~~~text
+WordPress -> API محلی -> Go -> پایگاه داده
+~~~
 
-Phase 3: WordPress -> API -> Queue -> multiple Go workers -> PostgreSQL
+مرحله ۲:
 
-## Product capabilities
+~~~text
+WordPress -> API امن HTTPS -> Go -> پایگاه داده
+~~~
 
-1. Seed domains/URLs.
-2. Bounded domain crawling.
-3. Priority discovery of useful pages such as contact/about pages.
-4. Technology detection.
-5. Public business contact extraction.
-6. Phone normalization and deduplication.
-7. Source URL/provenance for every result.
-8. Structured persistence.
-9. Job progress, errors, retries, and metrics.
-10. Filtering and export.
+مرحله ۳:
 
-## Initial technologies
+~~~text
+WordPress -> API -> صف -> چند Worker در Go -> PostgreSQL
+~~~
+
+## قابلیت‌های محصول
+
+1. دریافت دامنه‌ها و URLهای اولیه.
+2. کراول محدود و کنترل‌شدهٔ هر دامنه.
+3. اولویت‌دهی به صفحات مهم مانند تماس با ما و درباره ما.
+4. تشخیص فناوری سایت.
+5. استخراج اطلاعات تماس تجاریِ عمومی.
+6. نرمال‌سازی و حذف تکراری شماره‌ها.
+7. نگهداری URL منبع برای هر نتیجه.
+8. ذخیرهٔ ساختاریافتهٔ نتایج.
+9. نمایش وضعیت، خطا، تلاش مجدد و آمار Crawl.
+10. فیلتر و خروجی گرفتن از نتایج.
+
+## فناوری‌های اولیه
 
 - WordPress
 - WooCommerce
 
-Detection is evidence-based and returns technology, confidence, evidence, source URL, and detection time.
+تشخیص فناوری مبتنی بر شواهد است و برای هر تشخیص، فناوری، میزان اطمینان، شواهد، URL منبع و زمان تشخیص نگهداری می‌شود.
 
-## Fetching
+## روش دریافت صفحات
 
-Asynchronous HTTP is the default. Headless browser rendering is an escalation path only when normal HTTP does not expose enough information.
+HTTP غیرهمزمان روش پیش‌فرض است.
 
-## Performance
+اجرای مرورگر بدون رابط گرافیکی فقط زمانی استفاده می‌شود که HTTP معمولی اطلاعات کافی در اختیار قرار ندهد. اجرای مرورگر برای تمام صفحات پیش‌فرض نیست، چون مصرف منابع را به‌شدت افزایش می‌دهد.
 
-The workload is mostly network I/O, so controlled concurrency is more important than heavy per-site processes. Global and per-domain concurrency, timeouts, redirect limits, bounded retries, and backoff are mandatory.
+## استراتژی کارایی
 
-A small VPS around 4 vCPU / 8 GB RAM is a reasonable MVP starting point; actual throughput must be benchmarked.
+بار اصلی سیستم شبکه و I/O است؛ بنابراین کنترل همزمانی مهم‌تر از اجرای پردازش سنگین برای هر سایت است.
 
-## Data
+همزمانی کلی و همزمانی هر دامنه باید جداگانه کنترل شود. Timeout، محدودیت Redirect، تعداد تلاش مجدد محدود و Backoff الزامی هستند.
 
-Core entities:
+برای شروع، یک VPS حدود ۴ هستهٔ پردازنده و ۸ گیگابایت RAM نقطهٔ شروع مناسبی است؛ اما ظرفیت واقعی باید با Benchmark اندازه‌گیری شود.
 
-- Project
-- Domain
-- Crawl Job
-- Page
-- Technology
-- Contact
-- Job Error
+## داده‌ها
 
-The crawler model is independent of WordPress tables. PostgreSQL is the production direction.
+موجودیت‌های اصلی:
 
-## Security and responsible crawling
+- پروژه
+- دامنه
+- Job کراول
+- صفحه
+- فناوری
+- اطلاعات تماس
+- خطای Job
 
-The system is intended for public website information and controlled crawling.
+مدل دادهٔ کراولر مستقل از جداول وردپرس طراحی می‌شود. PostgreSQL گزینهٔ اصلی برای محیط Production است.
 
-Required protections include HTTPS/service authentication in remote mode, SSRF protection, bounded URL/domain counts, response-size limits, per-domain rate limits, timeouts, bounded retries, explicit crawl scope, and no authentication/CAPTCHA bypass or stealth/evasion design.
+## امنیت و کراول مسئولانه
 
-## Current status
+سیستم برای اطلاعات عمومی سایت‌ها و Crawl کنترل‌شده طراحی می‌شود.
 
-Architecture/specification phase. Implementation starts after the architecture is agreed.
+محافظت‌های الزامی:
 
-## Documentation
+- HTTPS و احراز هویت سرویس در حالت Remote
+- محافظت در برابر SSRF
+- محدودیت تعداد URL و دامنه
+- محدودیت حجم پاسخ
+- محدودیت درخواست در هر دامنه
+- Timeout و تلاش مجدد محدود
+- محدودهٔ مشخص Crawl
+- بدون دور زدن احراز هویت
+- بدون دور زدن CAPTCHA
+- بدون طراحی برای پنهان‌کاری یا دور زدن محدودیت‌ها
+- بدون تبدیل شدن به Proxy نامحدود
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [API Contract](docs/API-CONTRACT.md)
-- [Data Model](docs/DATA-MODEL.md)
-- [Roadmap](docs/ROADMAP.md)
+## وضعیت فعلی
 
-## MVP definition
+پروژه در مرحلهٔ مستندسازی و طراحی معماری است و پیاده‌سازی بعد از نهایی شدن معماری شروع می‌شود.
 
-A seed domain can be submitted, crawled asynchronously, classified for supported technologies, scanned for public business contact information, normalized, stored with provenance, and viewed/exported through the control plane.
+## مستندات
 
-The Go engine must also run independently of WordPress before the architecture is considered complete.
+- [معماری](docs/ARCHITECTURE.md)
+- [قرارداد API](docs/API-CONTRACT.md)
+- [مدل داده](docs/DATA-MODEL.md)
+- [نقشه راه](docs/ROADMAP.md)
+
+## تعریف MVP
+
+باید بتوان یک دامنهٔ اولیه را ثبت کرد، Crawl را به‌صورت غیرهمزمان اجرا کرد، فناوری‌های پشتیبانی‌شده را تشخیص داد، اطلاعات تماس تجاریِ عمومی را استخراج و نرمال کرد، منبع هر نتیجه را نگهداری کرد و نتایج را از طریق پنل مدیریت مشاهده و Export کرد.
+
+موتور Go همچنین باید قبل از کامل شدن معماری، مستقل از WordPress قابل اجرا باشد.
