@@ -62,6 +62,10 @@ class Numpo_Runtime {
  }
  public static function ensure_started(){
   if(self::mode()==='external') return true;
+  $lockFile=trailingslashit(wp_upload_dir()['basedir']).'numpo-runtime/runtime-start.lock';
+  wp_mkdir_p(dirname($lockFile));
+  $lock=@fopen($lockFile,'c');
+  if($lock && !@flock($lock,LOCK_EX)){$lock=null;}
   if(!is_admin() && !defined('REST_REQUEST')) return false;
   $engine=self::engine_path();
   if(!function_exists('exec')) { self::log_runtime_error('PHP exec() is disabled; Numpo bundled engine cannot start.'); return false; }
@@ -72,13 +76,23 @@ class Numpo_Runtime {
   $pid=is_file($p['pid'])?(int)trim((string)@file_get_contents($p['pid'])):0;
   $port=self::choose_port();
   if(self::is_running($pid)){
-   if(self::port_ready($port)) return true;
-   if(self::wait_ready($pid,$port,10)) return true;
-   self::log_runtime_error('Numpo engine process is running but port '.$port.' is not ready. Check engine.log.');
-   return false;
+   if(self::port_ready($port)){
+    if($lock){@flock($lock,LOCK_UN);@fclose($lock);}
+    return true;
+   }
+   if(self::wait_ready($pid,$port,3)){
+    if($lock){@flock($lock,LOCK_UN);@fclose($lock);}
+    return true;
+   }
+   @exec('kill -TERM '.(int)$pid.' 2>/dev/null');
+   $deadline=microtime(true)+2;
+   while(self::is_running($pid)&&microtime(true)<$deadline)usleep(100000);
+   if(self::is_running($pid)) @exec('kill -KILL '.(int)$pid.' 2>/dev/null');
   }
   @unlink($p['pid']);
-  return self::start();
+  $ok=self::start();
+  if($lock){@flock($lock,LOCK_UN);@fclose($lock);}
+  return $ok;
  }
  private static function mode(){return Numpo_Settings::runtime_mode();}
  public static function start(){
