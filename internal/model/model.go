@@ -8,3 +8,6 @@ type ProbeResult struct { Host string `json:"host"`; Status string `json:"status
 
 type Technology struct { Name string; Version string; Confidence float64; Evidence []string; URL string }
 type Contact struct { Type string; Value string; NormalizedValue string; URL string }
+type PageClassification struct { Class string; Confidence float64; Evidence []string; URL string }
+type BusinessProfile struct { Name string; Description string; Address string; Confidence float64; URL string }
+type SocialProfile struct { Network string; URL string; NormalizedURL string; Confidence float64; SourceURL string }
