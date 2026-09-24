@@ -1,0 +1,16 @@
+ALTER TABLE discovery_jobs ADD COLUMN IF NOT EXISTS config jsonb NOT NULL DEFAULT '{}'::jsonb, ADD COLUMN IF NOT EXISTS max_pages integer NOT NULL DEFAULT 100, ADD COLUMN IF NOT EXISTS max_urls integer NOT NULL DEFAULT 500, ADD COLUMN IF NOT EXISTS max_depth integer NOT NULL DEFAULT 3, ADD COLUMN IF NOT EXISTS max_candidates_per_page integer NOT NULL DEFAULT 50, ADD COLUMN IF NOT EXISTS processed_pages integer NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS processed_urls integer NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS cancelled_at timestamptz;
+ALTER TABLE domains ADD COLUMN IF NOT EXISTS crawl_pages integer NOT NULL DEFAULT 0;
+ALTER TABLE candidates ADD COLUMN IF NOT EXISTS depth integer NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS next_attempt_at timestamptz NOT NULL DEFAULT now(), ADD COLUMN IF NOT EXISTS lease_until timestamptz, ADD COLUMN IF NOT EXISTS processing_started_at timestamptz, ADD COLUMN IF NOT EXISTS completed_at timestamptz;
+CREATE INDEX IF NOT EXISTS candidates_claim_idx ON candidates(discovery_job_id,status,next_attempt_at,priority DESC,discovered_at);
+CREATE INDEX IF NOT EXISTS candidates_lease_idx ON candidates(discovery_job_id,status,lease_until);
+CREATE TABLE IF NOT EXISTS candidate_dead_letters(candidate_id uuid PRIMARY KEY REFERENCES candidates(id) ON DELETE CASCADE,discovery_job_id uuid NOT NULL REFERENCES discovery_jobs(id) ON DELETE CASCADE,attempts integer NOT NULL,error text NOT NULL DEFAULT '',failed_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS domain_rate_limits(normalized_domain text PRIMARY KEY,last_started_at timestamptz NOT NULL DEFAULT 'epoch');
+CREATE TABLE IF NOT EXISTS page_classifications(id uuid PRIMARY KEY,domain_id uuid NOT NULL REFERENCES domains(id) ON DELETE CASCADE,page_id uuid NOT NULL REFERENCES pages(id) ON DELETE CASCADE,class text NOT NULL,confidence double precision NOT NULL DEFAULT 0,evidence jsonb NOT NULL DEFAULT '[]'::jsonb,source_url text NOT NULL DEFAULT '',detected_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS business_profiles(id uuid PRIMARY KEY,domain_id uuid NOT NULL REFERENCES domains(id) ON DELETE CASCADE,name text NOT NULL DEFAULT '',description text NOT NULL DEFAULT '',address text NOT NULL DEFAULT '',source_url text NOT NULL DEFAULT '',confidence double precision NOT NULL DEFAULT 0,detected_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS social_profiles(id uuid PRIMARY KEY,domain_id uuid NOT NULL REFERENCES domains(id) ON DELETE CASCADE,network text NOT NULL,url text NOT NULL,normalized_url text NOT NULL,source_url text NOT NULL DEFAULT '',confidence double precision NOT NULL DEFAULT 0,detected_at timestamptz NOT NULL DEFAULT now());
+CREATE UNIQUE INDEX IF NOT EXISTS domain_probes_host_uidx ON domain_probes(host_id);
+CREATE UNIQUE INDEX IF NOT EXISTS technologies_domain_name_uidx ON technologies(domain_id,name);
+CREATE UNIQUE INDEX IF NOT EXISTS contacts_domain_type_normalized_uidx ON contacts(domain_id,type,normalized_value);
+CREATE UNIQUE INDEX IF NOT EXISTS page_classifications_domain_page_class_uidx ON page_classifications(domain_id,page_id,class);
+CREATE UNIQUE INDEX IF NOT EXISTS business_profiles_domain_uidx ON business_profiles(domain_id);
+CREATE UNIQUE INDEX IF NOT EXISTS social_profiles_domain_network_url_uidx ON social_profiles(domain_id,network,normalized_url);

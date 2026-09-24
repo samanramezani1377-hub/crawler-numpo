@@ -26,3 +26,11 @@ func TestBusinessExtraction(t *testing.T){
  got:=Business("<div>آدرس: تهران، خیابان نمونه، پلاک ۱</div>","https://example.com","Example Shop")
  if len(got)!=1||got[0].Name!="Example Shop"||got[0].Address==""{t.Fatalf("unexpected business extraction: %#v",got)}
 }
+
+func TestTechnologyDetectionExpansion(t *testing.T) {
+ body := `<script src="https://cdn.shopify.com/shop.js"></script><div id="mage-cache-storage"></div><script src="https://js.stripe.com/v3/"></script>`
+ got := Technologies(body, "https://example.com")
+ seen := map[string]bool{}
+ for _, v := range got { seen[v.Name] = true }
+ for _, want := range []string{"Shopify", "Magento", "Stripe"} { if !seen[want] { t.Fatalf("missing detector %s: %#v", want, got) } }
+}

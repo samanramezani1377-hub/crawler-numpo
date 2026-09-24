@@ -7,6 +7,7 @@ import(
  "syscall"
  "net/http"
  "time"
+ "strings"
  "github.com/samanramezani1377-hub/crawler-numpo/internal/config"
  "github.com/samanramezani1377-hub/crawler-numpo/internal/httpapi"
  "github.com/samanramezani1377-hub/crawler-numpo/internal/migrate"
@@ -15,6 +16,11 @@ import(
 func env(k,d string)string{if v:=os.Getenv(k);v!=""{return v};return d}
 func main(){
  cfg:=config.Load()
+ if !cfg.AllowAnonymousAPI {
+  key:=strings.TrimSpace(cfg.APIKey)
+  if key=="" { log.Fatal("NUMPO_API_KEY is required unless NUMPO_ALLOW_ANONYMOUS_API=true") }
+  if len(key)<32 { log.Fatal("NUMPO_API_KEY must be at least 32 characters") }
+ }
  root,cancel:=signal.NotifyContext(context.Background(),os.Interrupt,syscall.SIGTERM)
  defer cancel()
  st,e:=store.New(root,cfg.DatabaseURL);if e!=nil{log.Fatal(e)};defer st.Close()
