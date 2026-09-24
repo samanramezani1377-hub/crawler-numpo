@@ -2,6 +2,7 @@ package retry
 
 import (
  "math/rand"
+ "net/http"
  "strconv"
  "strings"
  "time"
@@ -37,7 +38,7 @@ func (p Policy) Decide(err error, attempt int) Decision {
   if he.Status!=429 && he.Status<500 { return Decision{Code:"final"} }
   if s:=strings.TrimSpace(he.RetryAfter); s!="" {
    if n,e:=strconv.Atoi(s); e==nil && n>=0 { d=time.Duration(n)*time.Second }
-   if t,e:=httpDate(s); e==nil { d=time.Until(t); if d<0 { d=0 } }
+   if t,e:=http.ParseTime(s); e==nil { d=time.Until(t); if d<0 { d=0 } }
   }
  }
  if p.Jitter>0 { d += time.Duration(rand.Int63n(int64(p.Jitter)+1)) }
@@ -45,4 +46,3 @@ func (p Policy) Decide(err error, attempt int) Decision {
  return Decision{Retry:true,Delay:d,Code:"retry"}
 }
 
-func httpDate(s string)(time.Time,error){ return time.Parse(time.RFC1123,s) }
