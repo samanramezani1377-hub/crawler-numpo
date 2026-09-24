@@ -142,3 +142,35 @@ URL:
 - وضعیت Crawl
 
 Index نهایی بعد از مشخص شدن Queryهای واقعی تعیین می‌شود.\n\n## توسعه مدل برای Schema خروجی\n\nمدل داده باید علاوه بر موجودیت‌های فعلی، امکان نگهداری ساختاریافتهٔ موارد زیر را داشته باشد:\n\n- مشخصات پایهٔ سایت و Crawl Metadata\n- Email و Social Profile\n- Business Identity عمومی\n- نوع و طبقه‌بندی Page\n- شواهد و Provenance برای تشخیص‌های مهم\n- سیگنال‌های WordPress و WooCommerce\n- سیگنال‌های فنی مانند CDN، Sitemap، Canonical و Open Graph\n\nمرجع دقیق فیلدها و تفکیک MVP از قابلیت‌های بعدی در [OUTPUT-SCHEMA](OUTPUT-SCHEMA.md) است.\n\n### Queryability\n\nطراحی باید امکان Query مستقیم برای مواردی مانند WordPress + WooCommerce، داشتن شماره، کشور، شهر، Email و فناوری را فراهم کند؛ بنابراین مقادیر نرمال‌شده و Detectionهای فناوری باید ساختاریافته و قابل Index باشند.\n
+
+## موجودیت‌های Discovery
+
+برای جداسازی Discovery از Crawl، مدل داده باید در ادامه این موجودیت‌ها را پشتیبانی کند:
+
+### Discovery Job
+- id
+- project_id
+- type
+- status
+- source
+- query
+- started_at
+- completed_at
+
+### Candidate
+- id
+- discovery_job_id
+- url
+- normalized_url
+- normalized_domain
+- source_type
+- source_id
+- source_query
+- parent_url
+- priority
+- confidence
+- status
+- discovered_at
+- crawl_job_id
+
+Candidate باید قبل از Crawl از Deduplication و Policy/SSRF checks عبور کند. جزئیات جریان در [DISCOVERY](DISCOVERY.md) تعریف شده است.
