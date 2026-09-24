@@ -31,7 +31,7 @@ func shouldEscalateToBrowser(p crawl.Page) bool {
  body := strings.ToLower(p.Body)
  if len(body) == 0 || len(body) > 512*1024 { return false }
  if !strings.Contains(body,"<script") { return false }
- markers := []string{"id="root"","id="app"","id="__next"","id="__nuxt"","ng-version","data-reactroot"}
+ markers := []string{"id=\"root\"","id=\"app\"","id=\"__next\"","id=\"__nuxt\"","ng-version","data-reactroot"}
  for _, marker := range markers { if strings.Contains(body,marker) { return true } }
  return strings.Count(body,"<script") >= 3 && !strings.Contains(body,"<main")
 }
