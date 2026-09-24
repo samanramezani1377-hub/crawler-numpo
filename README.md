@@ -4,7 +4,7 @@
 
 ## معماری
 
-معماری Discovery و Crawl از هم جداست. Numpo ابتدا می‌تواند دامنه‌های فعال را با Active Domain Discovery غربال کند و سپس Deep Search را فقط روی کاندیدهای مناسب اجرا کند. جزئیات در [معماری Discovery](docs/DISCOVERY.md) آمده است.
+معماری Discovery و Crawl از هم جداست. Numpo ابتدا می‌تواند دامنه‌های فعال را با Active Domain Probe غربال کند و سپس Deep Search را فقط روی کاندیدهای مناسب اجرا کند. جزئیات در [معماری Discovery](docs/DISCOVERY.md) آمده است.
 
 ~~~text
 پلاگین وردپرس
@@ -135,3 +135,9 @@ Active Check برای غربال سریع دامنه‌های فعال است و
 باید بتوان یک دامنهٔ اولیه را ثبت کرد، Crawl را به‌صورت غیرهمزمان اجرا کرد، فناوری‌های پشتیبانی‌شده را تشخیص داد، اطلاعات تماس تجاریِ عمومی را استخراج و نرمال کرد، منبع هر نتیجه را نگهداری کرد و نتایج را از طریق پنل مدیریت مشاهده و Export کرد.
 
 موتور Go همچنین باید قبل از کامل شدن معماری، مستقل از WordPress قابل اجرا باشد.\n\n## Schema اطلاعات خروجی\n\nجزئیات کامل داده‌هایی که نومپو استخراج می‌کند در [Schema اطلاعات خروجی](docs/OUTPUT-SCHEMA.md) تعریف شده است. خروجی حول Domain، Page، Technology، Contact، Business، Social و Technical Signals سازمان‌دهی می‌شود و برای داده‌های مهم Source URL و Confidence نگهداری می‌شود.\n\nMVP روی Domain، Crawl Metadata، Page، WordPress، WooCommerce، Phone، Email و Provenance تمرکز دارد؛ اطلاعات تجاری، شبکه‌های اجتماعی و سیگنال‌های پیشرفته‌تر مرحله‌ای اضافه می‌شوند.\n
+
+## اصل Classification
+
+Active Probe دامنه‌ها را حذف نمی‌کند. هر دامنهٔ قابل شناسایی در Domain Store باقی می‌ماند و Signal/Classificationهای آن جداگانه ثبت می‌شوند؛ بنابراین یک دامنه می‌تواند هم‌زمان Active، WordPress، WooCommerce، Cloudflare و دارای شمارهٔ عمومی باشد.
+
+Ruleهایی مانند `ACTIVE + WORDPRESS + WOOCOMMERCE` فقط برای Routing به Deep Search استفاده می‌شوند.
