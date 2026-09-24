@@ -11,5 +11,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
+      - run: go mod tidy
+      - run: git diff -- go.mod go.sum
       - run: go test ./...
       - run: go vet ./...
