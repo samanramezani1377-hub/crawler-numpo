@@ -106,7 +106,7 @@ class Numpo_Runtime {
   $parts=[];
   foreach($env as $k=>$v)$parts[]=$k.'='.escapeshellarg($v);
   $log=escapeshellarg($p['logs'].'engine.log');
-  $cmd='nohup '.implode(' ',$parts).' '.escapeshellarg($engine).' >> '.$log.' 2>&1 & echo $!';
+  $cmd='nohup env '.implode(' ',$parts).' '.escapeshellarg($engine).' >> '.$log.' 2>&1 & echo $!';
   $out=[];$code=1;@exec($cmd,$out,$code);
   if($code!==0 || empty($out[0])){self::log_runtime_error('Failed to launch Numpo engine.');return false;}
   $pid=(int)trim($out[0]);
