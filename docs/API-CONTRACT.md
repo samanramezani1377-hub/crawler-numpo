@@ -1,295 +1,170 @@
-# نومپو — قرارداد API
+# Numpo API Contract
 
-API مرز دائمی بین WordPress و Go است.
+Base path: `/api/v1`
 
-مسیر پایه:
+## Authentication
 
-/api/v1
-
-## احراز هویت
-
-در حالت Remote سرویس باید احراز هویت شود.
-
-نمونه:
-
-~~~text
+All endpoints except `GET /health` require:
+```
 Authorization: Bearer ENGINE_API_KEY
-~~~
+```
 
-کلیدها نباید داخل Git ذخیره شوند.
+Anonymous API access is disabled by default. It is only allowed when the engine is explicitly started with `NUMPO_ALLOW_ANONYMOUS_API=true`.
 
-## ایجاد Job
+Never store the API key in Git, client-side JavaScript, or API responses.
 
-POST /api/v1/crawl/jobs
+## Health
 
-نمونه درخواست:
+`GET /api/v1/health`
 
-~~~json
-{
-  "project_id": "project-123",
-  "seeds": ["https://example.com"],
-  "options": {
-    "max_pages_per_domain": 20,
-    "max_depth": 2,
-    "render_javascript": false
-  }
-}
-~~~
+Health is intentionally unauthenticated so infrastructure can probe it.
 
-نمونه پاسخ:
+Response:
+```json
+{"status":"ok","service":"numpo-engine"}
+```
 
-~~~json
-{
-  "job_id": "job_abc123",
-  "status": "queued"
-}
-~~~
+A database failure returns HTTP 503 with a stable error code.
 
-این Endpoint نباید تا پایان Crawl منتظر بماند.
+## Metrics
 
-## وضعیت Job
+`GET /api/v1/metrics`
 
-GET /api/v1/crawl/jobs/{job_id}
+Returns Prometheus-compatible text metrics. Metrics are operational data and should normally be protected at the network/ingress layer if the engine is internet reachable.
 
-وضعیت‌ها:
+## Discovery Jobs
 
-- queued — در صف
-- running — در حال اجرا
-- completed — کامل‌شده
-- completed_with_errors — کامل‌شده همراه خطا
-- failed — شکست‌خورده
-- cancelled — لغوشده
+### Create
 
-فیلدهای پیشرفت شامل تعداد دامنه‌ها، دامنه‌های کامل‌شده، صفحات دریافت‌شده، اطلاعات تماس و فناوری‌های شناسایی‌شده هستند.
+`POST /api/v1/discovery/jobs`
 
-## لغو Job
-
-POST /api/v1/crawl/jobs/{job_id}/cancel
-
-لغو باید جلوی کار جدید را بگیرد و اجازه دهد درخواست‌های در حال اجرا به‌صورت امن تمام شوند.
-
-## نتایج
-
-GET /api/v1/crawl/jobs/{job_id}/results
-
-فیلترهای اولیه:
-
-- فناوری
-- میزان اطمینان فناوری
-- دارای شماره
-- نوع شماره
-- کشور
-- دامنه
-- وضعیت Crawl
-
-نمونه:
-
-~~~json
-{
-  "domain": "example.com",
-  "technologies": [
-    {"name": "wordpress", "confidence": 0.96},
-    {"name": "woocommerce", "confidence": 0.91}
-  ],
-  "contacts": [
-    {
-      "type": "phone",
-      "value": "+982112345678",
-      "source_url": "https://example.com/contact"
-    }
-  ]
-}
-~~~
-
-## سلامت سرویس
-
-GET /api/v1/health
-
-~~~json
-{
-  "status": "ok",
-  "version": "0.1.0"
-}
-~~~
-
-## سازگاری
-
-- مسیرهای API نسخه‌بندی می‌شوند.
-- اضافه شدن فیلد اختیاری نباید Client قبلی را خراب کند.
-- معنی فیلدهای قبلی نباید بی‌سر و صدا تغییر کند.
-- تغییرات ناسازگار نیازمند نسخهٔ جدید API هستند.
-- WordPress باید قطع بودن موتور را به‌درستی مدیریت کند.
-- Go نباید به ساختار Request یا Database اختصاصی WordPress وابسته باشد.\n\n## Schema نتایج\n\nقرارداد Results باید با [OUTPUT-SCHEMA](OUTPUT-SCHEMA.md) هم‌راستا باشد. هر Result حداقل باید بتواند Domain، Technologies، Contacts و Provenance را برگرداند و در نسخه‌های بعدی Business، Social، Important Pages و Technical Signals را بدون شکستن Client قبلی اضافه کند.\n\nنمونهٔ نتیجهٔ کامل‌تر:\n\n~~~json\n{\n  "domain": {\n    "domain": "example.com",\n    "normalized_domain": "example.com",\n    "main_url": "https://example.com",\n    "https": true\n  },\n  "technologies": [\n    {"name": "wordpress", "confidence": 0.96, "source_url": "https://example.com/"},\n    {"name": "woocommerce", "confidence": 0.91, "source_url": "https://example.com/shop/"}\n  ],\n  "contacts": [\n    {\n      "type": "phone",\n      "raw_value": "021-12345678",\n      "normalized_value": "+982112345678",\n      "source_url": "https://example.com/contact",\n      "confidence": 0.97\n    }\n  ]\n}\n~~~\n\nفیلدهای جدید باید تا حد امکان Optional باشند تا Clientهای قبلی بدون تغییر کار کنند.\n
-
-## Discovery API
-
-Discovery از Crawl جداست و API مستقل دارد:
-
-- `POST /api/v1/discovery/jobs`
-- `GET /api/v1/discovery/jobs/{job_id}`
-- `GET /api/v1/discovery/jobs/{job_id}/candidates`
-- `POST /api/v1/discovery/jobs/{job_id}/cancel`
-
-### حالت Discovery
-
-هر Discovery Job یکی از این حالت‌ها را دارد:
-
-- `manual` — دریافت دامنه/URL اولیه از کاربر
-- `automatic` — تولید Candidate از منابع Discovery فعال
-- `hybrid` — ترکیب ورودی دستی و منابع خودکار
-
-نمونهٔ درخواست پیشنهادی:
-
+Request:
 ```json
 {
-  "project_id": "project-123",
-  "mode": "hybrid",
-  "seeds": ["example.com", "https://shop.example.com"],
-  "sources": {
-    "search_provider": true,
-    "sitemap": true,
-    "robots": true,
-    "link_discovery": true,
-    "subdomain_from_crawl": true
+  "project_id":"project-123",
+  "mode":"manual|automatic|hybrid",
+  "seeds":["https://example.com"],
+  "sources":{
+    "search_provider":true,
+    "sitemap":true,
+    "robots":true,
+    "link_discovery":true,
+    "subdomain_from_crawl":true
   },
-  "target": {
-    "technologies": ["wordpress", "woocommerce"],
-    "country": "IR",
-    "has_public_phone": true
+  "target":{
+    "technologies":["wordpress","woocommerce"],
+    "country":"IR",
+    "has_public_phone":true
+  },
+  "limits":{
+    "max_urls":500,
+    "max_pages":100,
+    "max_depth":3,
+    "max_candidates_per_page":50
+  },
+  "capabilities":{}
+}
+```
+
+The engine clamps client limits to configured server ceilings. Security policy cannot be disabled by a job request.
+
+Modes:
+- `manual`: at least one seed is required.
+- `automatic`: at least one automatic discovery source must be enabled.
+- `hybrid`: manual seeds or an automatic source must be present.
+
+Response: HTTP 202.
+```json
+{"job_id":"...","status":"queued","mode":"manual","created_at":"..."}
+```
+
+### Status
+
+`GET /api/v1/discovery/jobs/{job_id}`
+
+Returns job status, configuration snapshot, counters, and timestamps.
+
+States:
+`queued`, `running`, `completed`, `completed_with_errors`, `failed`, `cancelled`.
+
+### Cancel
+
+`POST /api/v1/discovery/jobs/{job_id}/cancel`
+
+Cancellation stops scheduling new work and lets in-flight operations exit through context cancellation.
+
+### Candidates
+
+`GET /api/v1/discovery/jobs/{job_id}/candidates?page=1&per_page=50`
+
+Maximum `per_page` is 200.
+
+### Resources
+
+The following paginated resources are available:
+- `domains`
+- `hosts`
+- `pages`
+- `technologies`
+- `contacts`
+- `business`
+- `social`
+- `classifications`
+- `probes`
+
+Example:
+`GET /api/v1/discovery/jobs/{job_id}/domains?page=1&per_page=50`
+
+### Errors
+
+`GET /api/v1/discovery/jobs/{job_id}/errors?page=1&per_page=50`
+
+### Candidate CSV
+
+Export:
+`GET /api/v1/discovery/jobs/{job_id}/candidates.csv`
+
+Import:
+`POST /api/v1/discovery/jobs/{job_id}/csv`
+
+CSV import accepts one URL per row and applies the same URL normalization and SSRF policy as other discovery inputs.
+
+## Error Contract
+
+All API errors use:
+```json
+{
+  "error":{
+    "code":"stable_machine_code",
+    "message":"Human-readable message.",
+    "retryable":false
   }
 }
 ```
 
-در حالت `manual`، `seeds` مستقیماً وارد Candidate Store می‌شوند و فعال بودن Search Provider الزامی نیست. در حالت `automatic`، منابع فعال Candidate تولید می‌کنند. در حالت `hybrid` هر دو جریان وارد Candidate Store مشترک می‌شوند و Deduplication مشترک دارند.
+Clients must use `code`, not `message`, for program logic.
 
-`mode` نحوهٔ ورود Candidate را مشخص می‌کند؛ Queue type مانند `discovery`، `active_probe` و `deep_crawl` مرحلهٔ پردازش را مشخص می‌کند و این دو مفهوم نباید در API یکی شوند.
+Common codes include:
+- `unauthorized`
+- `not_found`
+- `invalid_json`
+- `invalid_project_id`
+- `invalid_discovery_mode`
+- `manual_seeds_required`
+- `automatic_source_required`
+- `invalid_seed`
+- `csv_too_large`
+- `invalid_csv`
+- `database_unavailable`
 
-### Capabilityهای پردازشی
+## Security Contract
 
-Capabilityهای سطح محصول باید جدا از منابع Discovery مدیریت شوند، از جمله:
+Every crawl URL is checked before use. HTTP crawling uses a protected transport that validates DNS results and redirect targets against private/local/reserved networks. Browser escalation performs an initial URL policy check; browser networking should additionally be restricted at the deployment/network boundary.
 
-- `active_probe.enabled`
-- `deep_crawl.enabled`
-- `detection.wordpress.enabled`
-- `detection.woocommerce.enabled`
-- `extraction.phone.enabled`
-- `extraction.email.enabled`
-- `extraction.business.enabled`
-- `extraction.social.enabled`
-- `page_classification.enabled`
-- `browser_render.enabled`
+The engine must not be exposed directly to the public internet without authentication and network-level protection for metrics and database access.
 
-جزئیات معماری و مرز Capabilityها در [DISCOVERY](DISCOVERY.md) و [ARCHITECTURE](ARCHITECTURE.md) تعریف شده است.
+## Compatibility
 
-Candidateهای Discovery باید Source و Provenance خود را حفظ کنند. Search Provider فقط Candidate تولید می‌کند و تشخیص نهایی فناوری یا اطلاعات تماس باید توسط Crawl/Detector انجام شود.
+The supported API is the Discovery API under `/api/v1/discovery`. Older `/api/v1/crawl/*` examples are not active engine routes and must not be used by clients.
 
-
-## Discovery Job Contract — MVP
-
-### ایجاد Discovery Job
-
-POST /api/v1/discovery/jobs
-
-Request:
-
-\`\`\`json
-{
-  "project_id": "project-123",
-  "mode": "manual|automatic|hybrid",
-  "seeds": ["example.com", "https://shop.example.com"],
-  "sources": {
-    "manual_seeds": true,
-    "csv_import": false,
-    "search_provider": true,
-    "sitemap": true,
-    "robots": true,
-    "link_discovery": true,
-    "subdomain_from_crawl": true
-  },
-  "target": {
-    "technologies": ["wordpress", "woocommerce"],
-    "country": "IR",
-    "has_public_phone": true
-  },
-  "limits": {
-    "max_candidates": 10000,
-    "max_pages_per_domain": 100,
-    "max_depth": 3,
-    "max_candidates_per_page": 50
-  }
-}
-\`\`\`
-
-Validation:
-- project_id الزامی است.
-- mode فقط manual، automatic یا hybrid است.
-- manual حداقل یک Seed/CSV می‌خواهد.
-- automatic حداقل یک Source خودکار فعال می‌خواهد.
-- hybrid حداقل یک ورودی دستی یا Source خودکار می‌خواهد.
-- Seedها قبل از ذخیره‌سازی Normalize، Deduplicate و Policy Check می‌شوند.
-- target فقط برای Discovery/Routing است و به‌تنهایی اثبات Technology یا Contact نیست.
-- Limitها سقف ایمن سمت Engine دارند و Client نمی‌تواند Policyهای امنیتی را خاموش کند.
-
-Response:
-
-\`\`\`json
-{
-  "job_id": "discovery_abc123",
-  "status": "queued",
-  "mode": "hybrid",
-  "created_at": "2026-01-01T00:00:00Z"
-}
-\`\`\`
-
-### Discovery Job Status
-
-GET /api/v1/discovery/jobs/{job_id}
-
-حداقل فیلدها:
-- job_id
-- project_id
-- mode
-- status
-- candidate_counts
-- probe_counts
-- crawl_counts
-- error_count
-- created_at
-- started_at
-- completed_at
-- configuration_snapshot
-
-وضعیت Job:
-- queued
-- running
-- completed
-- completed_with_errors
-- failed
-- cancelled
-
-### Candidate API
-
-GET /api/v1/discovery/jobs/{job_id}/candidates
-
-فیلترهای MVP:
-- status
-- source_type
-- normalized_domain
-- queue_type
-- priority
-
-هر Candidate حداقل id، normalized_url، normalized_domain، source_type، status، confidence، discovered_at و provenance مرتبط را برمی‌گرداند.
-
-### قرارداد خطا
-
-\`\`\`json
-{
-  "error": {
-    "code": "invalid_discovery_mode",
-    "message": "Discovery mode is invalid.",
-    "retryable": false
-  }
-}
-\`\`\`
-
-code پایدار است؛ message برای نمایش و لاگ است و نباید تنها مبنای Client logic باشد.
+Adding optional response fields is backward compatible. Removing or changing the meaning of existing fields requires a new API version.
