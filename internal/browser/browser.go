@@ -24,7 +24,7 @@ func(r *ChromiumRenderer)Render(parent context.Context,rawURL string)(Result,err
  ctx,cancel:=context.WithTimeout(parent,r.Timeout);defer cancel()
  if strings.TrimSpace(r.Binary)==""{return Result{},ErrDisabled}
  start:=time.Now()
- cmd:=exec.CommandContext(ctx,r.Binary,"--headless","--disable-gpu","--no-sandbox","--dump-dom",rawURL)
+ cmd:=exec.CommandContext(ctx,r.Binary,"--headless","--disable-gpu","--dump-dom",rawURL)
  out,err:=cmd.Output()
  if err!=nil{return Result{},err}
  if len(out)>r.MaxOutput{out=out[:r.MaxOutput]}
