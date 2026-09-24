@@ -133,3 +133,29 @@
 - [ ] پیاده‌سازی Feature/Capability Settings
 - [ ] پیاده‌سازی Routing Rule Engine
 - [ ] پیاده‌سازی Subdomain Discovery داخل Deep Crawler
+
+
+## مرحله صفر — قراردادهای اجرایی تکمیل‌شده
+
+- [x] قرارداد دقیق Discovery Job
+- [x] State Machine برای Candidate / Probe / Deep Crawl
+- [x] Crawl Scope و Budget
+- [x] PostgreSQL Physical Schema اولیه
+- [x] Retry و Failure Policy
+
+از این نقطه، قراردادهای اصلی لازم برای شروع پیاده‌سازی MVP مشخص شده‌اند.
+
+### ترتیب پیاده‌سازی بعدی
+
+1. Go Module و ساختار Packageها
+2. PostgreSQL migrations و Repositoryها
+3. URL/Domain/Host normalization
+4. Candidate Store و atomic dedup
+5. Active Probe
+6. Discovery Providers
+7. Routing Engine
+8. Deep Crawl
+9. Detection و Extraction
+10. API و Integration با WordPress
+
+هیچ Search Provider یا Browser Worker نباید قبل از تثبیت Interfaceهای مربوطه به Crawl Core وابستگی مستقیم پیدا کند.
