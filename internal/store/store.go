@@ -22,8 +22,14 @@ func(s *Store)ClaimCandidate(ctx context.Context,job string,lease time.Duration)
 func(s *Store)SetCandidateStatus(ctx context.Context,id,status,lastError string)error{_,e:=s.DB.Exec(ctx,`UPDATE candidates SET status=$2,last_error=$3,lease_until=NULL,completed_at=CASE WHEN $2 IN ('completed','failed_final') THEN now() ELSE completed_at END WHERE id=$1`,id,status,lastError);return e}
 func(s *Store)ScheduleRetry(ctx context.Context,id,lastError string,attempt int)error{
  var n int
- if e:=s.DB.QueryRow(ctx,"SELECT attempt_count FROM candidates WHERE id=$1",id).Scan(&n);e!=nil{return e}
- if n>=3{return s.SetCandidateStatus(ctx,id,"failed_final",lastError)}
+ var job string
+ if e:=s.DB.QueryRow(ctx,"SELECT attempt_count,discovery_job_id::text FROM candidates WHERE id=$1",id).Scan(&n,&job);e!=nil{return e}
+ if n>=3{
+  tx,e:=s.DB.Begin(ctx);if e!=nil{return e};defer tx.Rollback(ctx)
+  if _,e=tx.Exec(ctx,`INSERT INTO candidate_dead_letters(candidate_id,discovery_job_id,attempts,error) VALUES($1,$2,$3,$4) ON CONFLICT(candidate_id) DO UPDATE SET attempts=EXCLUDED.attempts,error=EXCLUDED.error,failed_at=now()`,id,job,n,lastError);e!=nil{return e}
+  if _,e=tx.Exec(ctx,`UPDATE candidates SET status='failed_final',last_error=$2,lease_until=NULL,completed_at=now() WHERE id=$1`,id,lastError);e!=nil{return e}
+  return tx.Commit(ctx)
+ }
  delay:=time.Second*time.Duration(1<<(n-1));if delay>30*time.Second{delay=30*time.Second}
  _,e:=s.DB.Exec(ctx,`UPDATE candidates SET status='failed_retryable',last_error=$2,next_attempt_at=now()+($3 * interval '1 millisecond'),lease_until=NULL WHERE id=$1`,id,lastError,delay.Milliseconds());return e
 }
@@ -43,6 +49,26 @@ func(s *Store)RecordJobError(ctx context.Context,job,category,code,message strin
 func(s *Store)ProbeFresh(ctx context.Context,hostID string,ttl time.Duration)(bool,bool,error){var last time.Time;var status string;e:=s.DB.QueryRow(ctx,"SELECT last_probe_at,status FROM domain_probes WHERE host_id=$1",hostID).Scan(&last,&status);if e!=nil{if e==pgx.ErrNoRows{return false,false,nil};return false,false,e};return time.Since(last)<ttl,status=="active",nil}
 
 func(s *Store)ScheduleRetryAfter(ctx context.Context,id,lastError string,delay time.Duration)error{var n int;if e:=s.DB.QueryRow(ctx,"SELECT attempt_count FROM candidates WHERE id=$1",id).Scan(&n);e!=nil{return e};if n>=3{return s.SetCandidateStatus(ctx,id,"failed_final",lastError)};if delay<time.Second{delay=time.Second};if delay>30*time.Second{delay=30*time.Second};_,e:=s.DB.Exec(ctx,"UPDATE candidates SET status='failed_retryable',last_error=$2,next_attempt_at=now()+($3 * interval '1 millisecond'),lease_until=NULL WHERE id=$1",id,lastError,delay.Milliseconds());return e}
+
+func(s *Store)AcquireDomainRateLimit(ctx context.Context,domain string,interval time.Duration)error{
+ if interval<=0{return nil}
+ for{
+  tx,e:=s.DB.Begin(ctx);if e!=nil{return e}
+  var last time.Time
+  e=tx.QueryRow(ctx,`INSERT INTO domain_rate_limits(normalized_domain,last_started_at) VALUES($1,'epoch') ON CONFLICT(normalized_domain) DO UPDATE SET normalized_domain=EXCLUDED.normalized_domain RETURNING last_started_at`,domain).Scan(&last)
+  if e!=nil{_ = tx.Rollback(ctx);return e}
+  now:=time.Now()
+  wait:=interval-now.Sub(last)
+  if wait<=0{
+   if _,e=tx.Exec(ctx,`UPDATE domain_rate_limits SET last_started_at=now() WHERE normalized_domain=$1`,domain);e!=nil{_ = tx.Rollback(ctx);return e}
+   if e=tx.Commit(ctx);e!=nil{return e}
+   return nil
+  }
+  _=tx.Rollback(ctx)
+  timer:=time.NewTimer(wait)
+  select{case<-ctx.Done():timer.Stop();return ctx.Err();case<-timer.C:}
+ }
+}
 
 func(s *Store)UpsertPageClassification(ctx context.Context,domainID,pageID,class string,confidence float64,evidence []string,source string)error{b,_:=json.Marshal(evidence);_,e:=s.DB.Exec(ctx,`INSERT INTO page_classifications(id,domain_id,page_id,class,confidence,evidence,source_url) VALUES(gen_random_uuid(),$1,$2,$3,$4,$5::jsonb,$6) ON CONFLICT(domain_id,page_id,class) DO UPDATE SET confidence=EXCLUDED.confidence,evidence=EXCLUDED.evidence,source_url=EXCLUDED.source_url,detected_at=now()`,domainID,pageID,class,confidence,string(b),source);return e}
 func(s *Store)UpsertBusiness(ctx context.Context,domainID,name,description,address,source string,confidence float64)error{_,e:=s.DB.Exec(ctx,`INSERT INTO business_profiles(id,domain_id,name,description,address,source_url,confidence) VALUES(gen_random_uuid(),$1,$2,$3,$4,$5,$6) ON CONFLICT(domain_id) DO UPDATE SET name=CASE WHEN EXCLUDED.name<>'' THEN EXCLUDED.name ELSE business_profiles.name END,address=CASE WHEN EXCLUDED.address<>'' THEN EXCLUDED.address ELSE business_profiles.address END,source_url=EXCLUDED.source_url,confidence=GREATEST(business_profiles.confidence,EXCLUDED.confidence),detected_at=now()`,domainID,name,description,address,source,confidence);return e}
