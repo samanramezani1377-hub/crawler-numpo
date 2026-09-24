@@ -36,6 +36,7 @@ class Numpo_Runtime {
   if(!get_option('numpo_engine_url')) add_option('numpo_engine_url','http://127.0.0.1:'.self::choose_port());
  }
  public static function ensure_started(){
+  if(self::mode()==='external') return;
   if(!is_admin() && !defined('REST_REQUEST')) return;
   $engine=self::engine_path(); if(!is_file($engine) || !is_executable($engine)) return;
   $p=self::paths(); foreach(['base','runtime','logs'] as $k) wp_mkdir_p($p[$k]);
@@ -43,7 +44,9 @@ class Numpo_Runtime {
   if(self::is_running($pid)) return;
   self::start();
  }
+ private static function mode(){return Numpo_Settings::runtime_mode();}
  public static function start(){
+  if(self::mode()==='external') return false;
   $engine=self::engine_path(); if(!is_file($engine)) return false;
   $p=self::paths(); foreach(['base','runtime','logs'] as $k) wp_mkdir_p($p[$k]);
   $port=self::choose_port(); $key=Numpo_Settings::api_key();
