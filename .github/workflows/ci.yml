@@ -116,3 +116,15 @@ jobs:
           name: numpo-wordpress-plugin
           path: dist/numpo.zip
           if-no-files-found: error
+  engine-image:
+    name: Build engine container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose configuration
+        env:
+          NUMPO_POSTGRES_PASSWORD: ci-test-password-012345678901234567890123
+          NUMPO_API_KEY: ci-test-api-key-012345678901234567890123456789
+        run: docker compose config --quiet
+      - name: Build engine image
+        run: docker build --pull -t numpo-engine:ci .
