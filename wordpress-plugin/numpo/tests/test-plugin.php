@@ -49,4 +49,12 @@ class Numpo_Plugin_Test extends WP_UnitTestCase {
         $this->assertInstanceOf(WP_REST_Response::class, $response);
         $this->assertSame(200, $response->get_status());
     }
+    public function test_runtime_diagnostics_report_required_components(): void {
+        $d = Numpo_Diagnostics::check();
+        $this->assertArrayHasKey('exec', $d['checks']);
+        $this->assertArrayHasKey('engine', $d['checks']);
+        $this->assertArrayHasKey('postgres', $d['checks']);
+        $this->assertArrayHasKey('chromium', $d['checks']);
+        $this->assertFalse($d['checks']['chromium']['required']);
+    }
 }
