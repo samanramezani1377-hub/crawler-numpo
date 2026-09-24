@@ -10,7 +10,7 @@ func(w *Worker)Run(ctx context.Context,job string)error{pages:=0;for pages<w.Max
  for _,ct:=range detect.Contacts(p.Body,p.URL){_ = w.Store.UpsertSignal(ctx,domain,"contact",ct.Type,ct.NormalizedValue,1,nil,ct.URL)}
  if !wp&&!wc{_ = w.Store.SetCandidateStatus(ctx,id,"completed","");continue}
  _ = w.Store.SetCandidateStatus(ctx,id,"completed","")
- for i,link:=range p.Links{if i>=w.MaxCandidatesPerPage{break};u,e:=urlnorm.URL(link);if e!=nil{continue};if policy.ValidateURL(link)!=nil{continue};if strings.EqualFold(u.Hostname(),domain)==false{continue};d,_:=urlnorm.Domain(link);_ = w.Store.UpsertCandidate(ctx,job,uuid.NewString(),link,u.String(),d,u.Hostname(),"deep_crawl",raw,50,0.8)}
+ for i,link:=range p.Links{if i>=w.MaxCandidatesPerPage{break};u,e:=urlnorm.URL(link);if e!=nil{continue};if policy.ValidateURL(link)!=nil{continue};if strings.EqualFold(u.Hostname(),domain)==false{continue};d,_:=urlnorm.Domain(link);_ = w.Store.UpsertCandidate(ctx,uuid.NewString(),job,link,u.String(),d,u.Hostname(),"deep_crawl",raw,50,0.8)}
  }
  return w.Store.FinishJobIfEmpty(ctx,job)}
 var _=time.Second
