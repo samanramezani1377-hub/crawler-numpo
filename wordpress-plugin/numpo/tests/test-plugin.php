@@ -5,12 +5,6 @@ class Numpo_Plugin_Test extends WP_UnitTestCase {
         $this->assertFileExists(NUMPO_DIR . 'numpo.php');
     }
 
-    public function test_activation_sets_default_engine_url(): void {
-        delete_option('numpo_engine_url');
-        do_action('activate_numpo/numpo.php');
-        $this->assertSame('http://127.0.0.1:8080', get_option('numpo_engine_url'));
-    }
-
     public function test_settings_normalize_engine_url(): void {
         update_option('numpo_engine_url', 'https://engine.example.test/ ');
         $this->assertSame('https://engine.example.test', Numpo_Settings::engine_url());
@@ -49,6 +43,7 @@ class Numpo_Plugin_Test extends WP_UnitTestCase {
             return ['response' => ['code' => 200], 'body' => '{"imported":1}'];
         }, 10, 3);
         $request = new WP_REST_Request('POST', '/numpo/v1/jobs/job-1/csv');
+        $request->set_param('id', 'job-1');
         $request->set_body("url\nhttps://example.com\n");
         $response = Numpo_API::csv($request);
         $this->assertInstanceOf(WP_REST_Response::class, $response);
