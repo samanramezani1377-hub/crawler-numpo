@@ -1,61 +1,144 @@
-# Numpo Crawler — Data Model
+# نومپو — مدل داده
 
-The model is independent of WordPress. Production direction: PostgreSQL.
+مدل داده مستقل از WordPress است.
 
-## Project
+گزینهٔ اصلی Production: PostgreSQL.
 
-id, name, description, created_at, updated_at.
+## پروژه
 
-## Domain
+- id
+- name
+- description
+- created_at
+- updated_at
 
-id, project_id, domain, normalized_domain, status, first_seen_at, last_crawled_at.
+## دامنه
 
-## Crawl Job
+- id
+- project_id
+- domain
+- normalized_domain
+- status
+- first_seen_at
+- last_crawled_at
 
-id, project_id, status, started_at, completed_at, created_at, error_count, page_count, contact_count.
+## Job کراول
 
-## Page
+- id
+- project_id
+- status
+- started_at
+- completed_at
+- created_at
+- error_count
+- page_count
+- contact_count
 
-id, domain_id, url, canonical_url, status_code, content_type, depth, fetch_status, fetched_at, response_time_ms, error_code.
+## صفحه
 
-Full HTML should not be stored by default. Any future raw-content retention needs an explicit retention policy.
+- id
+- domain_id
+- url
+- canonical_url
+- status_code
+- content_type
+- depth
+- fetch_status
+- fetched_at
+- response_time_ms
+- error_code
 
-## Technology
+HTML کامل به‌صورت پیش‌فرض ذخیره نمی‌شود. اگر بعداً ذخیرهٔ محتوای خام اضافه شد باید سیاست نگهداری مشخص داشته باشد.
 
-id, domain_id, name, version, confidence, evidence, source_url, detected_at.
+## فناوری
 
-## Contact
+- id
+- domain_id
+- name
+- version
+- confidence
+- evidence
+- source_url
+- detected_at
 
-id, domain_id, type, raw_value, normalized_value, confidence, source_url, first_seen_at, last_seen_at.
+## اطلاعات تماس
 
-Phone types may include mobile, landline, fax, and unknown.
+- id
+- domain_id
+- type
+- raw_value
+- normalized_value
+- confidence
+- source_url
+- first_seen_at
+- last_seen_at
 
-## Job Error
+انواع شماره:
 
-id, job_id, domain_id, url, category, message, retryable, created_at.
+- موبایل
+- تلفن ثابت
+- فکس
+- نامشخص
 
-## Relationships
+## خطای Job
+
+- id
+- job_id
+- domain_id
+- url
+- category
+- message
+- retryable
+- created_at
+
+## روابط
 
 ~~~text
-Project
+پروژه
   |
-  +-- Domains
-  |     +-- Pages
-  |     +-- Technologies
-  |     +-- Contacts
+  +-- دامنه‌ها
+  |     +-- صفحات
+  |     +-- فناوری‌ها
+  |     +-- اطلاعات تماس
   |
-  +-- Crawl Jobs
-        +-- Job Errors
+  +-- Jobهای Crawl
+        +-- خطاها
 ~~~
 
-## Normalization
+## نرمال‌سازی
 
-Domains: lowercase, normalize default ports and trailing dots, separate scheme from host, retain original input where useful.
+دامنه:
 
-URLs: normalize scheme/host, remove fragments, optionally remove known tracking parameters, and prevent duplicate fetches.
+- حروف کوچک
+- نرمال‌سازی Port پیش‌فرض
+- حذف نقطهٔ انتهایی
+- جدا کردن Scheme از Host
+- نگهداری ورودی اولیه در صورت نیاز برای Audit
 
-Phones: retain original display value and derive a country-aware normalized value. Normalization is not proof that ambiguous strings are identical.
+URL:
 
-## Indexing priorities
+- نرمال‌سازی Scheme و Host
+- حذف Fragment
+- امکان حذف پارامترهای Tracking شناخته‌شده
+- جلوگیری از دریافت تکراری
 
-Likely indexes include normalized domain, project/job IDs, technology name, technology confidence, normalized phone, contact type, source URL, and crawl status. Exact indexes should be validated after real query patterns exist.
+شماره:
+
+- نگهداری شکل اصلی نمایش‌داده‌شده
+- ساخت مقدار نرمال‌شده بر اساس کشور
+- نرمال‌سازی به‌تنهایی نباید اثبات کند دو رشتهٔ مبهم یک شماره هستند.
+
+## اولویت Indexها
+
+احتمالاً برای این موارد Index لازم خواهد بود:
+
+- دامنهٔ نرمال‌شده
+- شناسهٔ پروژه و Job
+- نام فناوری
+- میزان اطمینان فناوری
+- شمارهٔ نرمال‌شده
+- نوع اطلاعات تماس
+- URL منبع
+- وضعیت Crawl
+
+Index نهایی بعد از مشخص شدن Queryهای واقعی تعیین می‌شود.
