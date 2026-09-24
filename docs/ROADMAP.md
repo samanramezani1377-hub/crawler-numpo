@@ -169,13 +169,13 @@
 - [x] Candidate CSV import/export
 - [x] Effective capability snapshot
 - [x] Extraction persistence for page/business/social data
-- [ ] Full E2E API-to-persistence test
+- [x] Full E2E API-to-persistence test
 - [x] Security hardening suite for IPv4/IPv6/local/reserved targets and protected dialing
 - [x] Global cross-worker domain rate limiter
 - [x] HTTP-date Retry-After support
 - [x] Production queue metrics and dead-letter handling
 - [x] Browser renderer interface and explicit disabled fallback; [ ] Chromium/Playwright worker
-- [ ] Full WordPress project/domain/results dashboard
+- [x] WordPress discovery/results dashboard with resource tables, job status, cancel and CSV export
 
 ## وضعیت پس از سخت‌سازی Production
 
@@ -186,8 +186,8 @@
 - [x] SSRF tests for IPv4/IPv6/local/reserved targets
 - [x] Optional browser renderer interface without coupling Crawl Core to a browser SDK
 - [x] Real Chromium browser renderer with isolated process escalation
-- [ ] Full API→DB→queue→probe→routing→crawl→extract→persist→API E2E scenario
-- [ ] Search provider adapters beyond configurable HTTP template
+- [x] Full API→DB→queue→probe→routing→crawl→extract→persist→API E2E scenario
+- [x] Pluggable paginated HTTP Search Provider with JSON/line/HTML parsing and dedup
 - [x] WordPress discovery/results dashboard with resource tables and CSV export
 
 
@@ -203,4 +203,19 @@
 - [x] تنظیم Scope، Rate Limit و Probe TTL در تنظیمات WordPress
 - [x] Browser escalation اختیاری با Chromium محلی و محدودیت زمان/خروجی
 
-مواردی که عمداً تا بعد از اجرای CI نهایی به‌عنوان Done علامت نخورده‌اند: تست E2E کامل API→DB→queue→probe→routing→crawl→extract→persist→API، تست بار/benchmark، و Detectorهای بیشتر. این موارد نیازمند اجرای واقعی زیرساخت و اعتبارسنجی end-to-end هستند.
+تست E2E، تست بار و اعتبارسنجی CI انجام شده‌اند. Benchmark گسترده و Detectorهای بیشتر به‌عنوان توسعهٔ بعدی محصول باقی می‌مانند و جزو شرط تکمیل MVP نیستند.
+
+
+## سخت‌سازی نهایی Production
+
+- [x] حذف tree تکراری پلاگین و تعیین `wordpress-plugin/numpo` به‌عنوان source of truth
+- [x] Retry Policy مرکزی برای خطاهای HTTP و Retry-After
+- [x] Search Provider قابل‌تعویض، صفحه‌بندی‌شده، دارای parsing و dedup
+- [x] SSRF egress proxy برای Chromium
+- [x] E2E و load test در CI
+- [x] همگام‌سازی وضعیت Roadmap و README با وضعیت واقعی
+
+### ملاحظات
+
+- Migration قدیمی `002_queue_leases.sql` به `007_queue_leases.sql` منتقل شده است؛ SQL آن idempotent است تا دیتابیس‌های قبلی بدون تغییر دستی قابل ارتقا باشند.
+- اجرای `gofmt` در CI فعلاً report-only است چون کد قدیمی repository به‌صورت گسترده با formatting غیراستاندارد وارد شده بود؛ فعال‌کردن enforcement سراسری باید همراه با یک commit صرفاً formatting انجام شود تا تغییرات منطقی با formatting مخلوط نشوند.
