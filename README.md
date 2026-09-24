@@ -124,20 +124,22 @@ HTTP غیرهمزمان روش پیش‌فرض است.
 
 ## Pipeline اصلی
 
+ورودی Discovery می‌تواند دستی، خودکار یا ترکیبی باشد:
+
 ```text
-Discovery → Active Check → Technology Filter → Deep Search → Intelligence
+Manual / CSV ────────┐
+Search / Sitemap ────┤
+Robots / Links ──────┤→ Candidate Store → Active Probe
+Subdomains ──────────┘                         ↓
+                                        Classification
+                                              ↓
+                                           Routing
+                                              ↓
+                                          Deep Crawl
+                                              ↓
+                                         Intelligence
 ```
 
-Active Check برای غربال سریع دامنه‌های فعال است و Deep Search برای تحلیل عمیق سایت‌های منتخب. هر دو از Go Crawl Engine و محدودیت‌های امنیتی و Rate Limit مشترک استفاده می‌کنند.
+در حالت Manual، کاربر فقط لیست دامنه/URL می‌دهد و Search Provider لازم نیست. در حالت Automatic، Numpo خودش Candidate تولید می‌کند. حالت Hybrid هر دو مسیر را روی Candidate Store مشترک ترکیب می‌کند.
 
-## تعریف MVP
-
-باید بتوان یک دامنهٔ اولیه را ثبت کرد، Crawl را به‌صورت غیرهمزمان اجرا کرد، فناوری‌های پشتیبانی‌شده را تشخیص داد، اطلاعات تماس تجاریِ عمومی را استخراج و نرمال کرد، منبع هر نتیجه را نگهداری کرد و نتایج را از طریق پنل مدیریت مشاهده و Export کرد.
-
-موتور Go همچنین باید قبل از کامل شدن معماری، مستقل از WordPress قابل اجرا باشد.\n\n## Schema اطلاعات خروجی\n\nجزئیات کامل داده‌هایی که نومپو استخراج می‌کند در [Schema اطلاعات خروجی](docs/OUTPUT-SCHEMA.md) تعریف شده است. خروجی حول Domain، Page، Technology، Contact، Business، Social و Technical Signals سازمان‌دهی می‌شود و برای داده‌های مهم Source URL و Confidence نگهداری می‌شود.\n\nMVP روی Domain، Crawl Metadata، Page، WordPress، WooCommerce، Phone، Email و Provenance تمرکز دارد؛ اطلاعات تجاری، شبکه‌های اجتماعی و سیگنال‌های پیشرفته‌تر مرحله‌ای اضافه می‌شوند.\n
-
-## اصل Classification
-
-Active Probe دامنه‌ها را حذف نمی‌کند. هر دامنهٔ قابل شناسایی در Domain Store باقی می‌ماند و Signal/Classificationهای آن جداگانه ثبت می‌شوند؛ بنابراین یک دامنه می‌تواند هم‌زمان Active، WordPress، WooCommerce، Cloudflare و دارای شمارهٔ عمومی باشد.
-
-Ruleهایی مانند `ACTIVE + WORDPRESS + WOOCOMMERCE` فقط برای Routing به Deep Search استفاده می‌شوند.
+Active Probe برای اندازه‌گیری وضعیت شبکه و Signalهای پایه است و دامنه را حذف نمی‌کند. Deep Crawl تحلیل عمیق را انجام می‌دهد. هر دو از Go Crawl Engine و محدودیت‌های امنیتی و Rate Limit مشترک استفاده می‌کنند.
