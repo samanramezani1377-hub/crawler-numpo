@@ -14,7 +14,7 @@ func(s *Store)ClaimCandidate(ctx context.Context,job string,lease time.Duration)
  tx,e:=s.DB.Begin(ctx);if e!=nil{return "","","","",0,e};defer tx.Rollback()
  var id,u,domain,status string;var depth int
  q:=`SELECT id,url,normalized_domain,status,depth FROM candidates WHERE discovery_job_id=$1 AND ((status IN ('new','queued','failed_retryable') AND next_attempt_at<=now()) OR (status='processing' AND lease_until<now())) ORDER BY priority DESC,discovered_at FOR UPDATE SKIP LOCKED LIMIT 1`
- e=tx.QueryRow(ctx,q,job).Scan(&id,&u,&domain,&status,&depth);if e!=nil{return "","","","",e}
+ e=tx.QueryRow(ctx,q,job).Scan(&id,&u,&domain,&status,&depth);if e!=nil{return "","","","",0,e}
  if _,e=tx.Exec(ctx,"UPDATE candidates SET status='processing',attempt_count=attempt_count+1,processing_started_at=now(),lease_until=now()+($2 * interval '1 millisecond') WHERE id=$1",id,lease.Milliseconds());e!=nil{return "","","","",e}
  if e=tx.Commit(ctx);e!=nil{return "","","","",e};return id,u,domain,status,depth,nil
 }
