@@ -120,3 +120,16 @@ GET /api/v1/health
 - تغییرات ناسازگار نیازمند نسخهٔ جدید API هستند.
 - WordPress باید قطع بودن موتور را به‌درستی مدیریت کند.
 - Go نباید به ساختار Request یا Database اختصاصی WordPress وابسته باشد.\n\n## Schema نتایج\n\nقرارداد Results باید با [OUTPUT-SCHEMA](OUTPUT-SCHEMA.md) هم‌راستا باشد. هر Result حداقل باید بتواند Domain، Technologies، Contacts و Provenance را برگرداند و در نسخه‌های بعدی Business، Social، Important Pages و Technical Signals را بدون شکستن Client قبلی اضافه کند.\n\nنمونهٔ نتیجهٔ کامل‌تر:\n\n~~~json\n{\n  "domain": {\n    "domain": "example.com",\n    "normalized_domain": "example.com",\n    "main_url": "https://example.com",\n    "https": true\n  },\n  "technologies": [\n    {"name": "wordpress", "confidence": 0.96, "source_url": "https://example.com/"},\n    {"name": "woocommerce", "confidence": 0.91, "source_url": "https://example.com/shop/"}\n  ],\n  "contacts": [\n    {\n      "type": "phone",\n      "raw_value": "021-12345678",\n      "normalized_value": "+982112345678",\n      "source_url": "https://example.com/contact",\n      "confidence": 0.97\n    }\n  ]\n}\n~~~\n\nفیلدهای جدید باید تا حد امکان Optional باشند تا Clientهای قبلی بدون تغییر کار کنند.\n
+
+## Discovery API
+
+Discovery از Crawl جداست و API مستقل خواهد داشت:
+
+- `POST /api/v1/discovery/jobs`
+- `GET /api/v1/discovery/jobs/{job_id}`
+- `GET /api/v1/discovery/jobs/{job_id}/candidates`
+- `POST /api/v1/discovery/jobs/{job_id}/cancel`
+
+Candidateهای Discovery باید Source و Provenance خود را حفظ کنند. Search Provider فقط Candidate تولید می‌کند و تشخیص نهایی فناوری یا اطلاعات تماس باید توسط Crawl/Detector انجام شود.
+
+برای جزئیات معماری به [DISCOVERY](DISCOVERY.md) مراجعه کنید.
