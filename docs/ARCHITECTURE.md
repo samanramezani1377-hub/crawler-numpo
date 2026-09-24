@@ -1,86 +1,324 @@
-# Numpo Crawler — Architecture
+# نومپو — معماری
 
-## Decision
+## ۱. تصمیم معماری
 
-The crawler engine is implemented in Go. WordPress is a control plane and UI, not a crawler dependency.
+موتور اصلی Crawl با Go پیاده‌سازی می‌شود.
 
-## Boundaries
+WordPress فقط نقش پنل مدیریت و رابط کاربری را دارد و نباید به وابستگی اجباری موتور Crawl تبدیل شود.
 
-### WordPress Plugin
-Owns projects, seeds, configuration, job creation, status, results, filters, export, and engine connection settings.
+### چرا Go؟
 
-It must not own HTTP crawling, DNS/concurrency management, retry loops, or browser workers.
+بخش اصلی کار شامل عملیات شبکه‌ای است:
 
-### Go Engine
-Owns scheduling, HTTP fetching, redirects, timeouts, URL canonicalization, link discovery, crawl budget, technology detection, contact extraction, normalization, deduplication, persistence, retries, rate limiting, and metrics.
+- DNS
+- اتصال TCP/TLS
+- درخواست HTTP
+- انتظار برای پاسخ
+- پردازش HTML
+- استخراج سبک اطلاعات
 
-### Database
-The crawler model is independent of WordPress tables. PostgreSQL is the production direction.
+Go برای همزمانی بالا و مصرف نسبتاً پایین منابع مناسب است.
 
-## Deployment modes
+### چرا Crawl داخل PHP/WordPress نباشد؟
 
-Same VPS: WordPress -> local API -> Go -> database.
+پیاده‌سازی کامل داخل WordPress، Crawl را به محدودیت‌های PHP، Bootstrap وردپرس، WP-Cron، Queueهای وردپرس، افزونه‌ها و محدودیت‌های هاست وابسته می‌کند.
 
-Separate: WordPress -> HTTPS API -> Go -> queue -> workers -> PostgreSQL.
+WordPress همچنان پنل مدیریتی خوبی است، اما اجرای Crawl باید بر عهدهٔ Go باشد.
 
-Scaled: API -> queue -> N workers -> PostgreSQL.
+## ۲. مرزبندی اجزا
 
-The plugin must not care whether the engine is local or remote.
+### پلاگین WordPress
 
-## Crawl lifecycle
+مسئول:
 
-Create project -> add seeds -> create job -> queue -> resolve -> fetch homepage -> detect technology -> discover relevant pages -> fetch -> extract public contacts -> normalize/deduplicate -> persist -> complete.
+- احراز هویت و سطح دسترسی مدیر
+- پروژه‌ها
+- دامنه‌های اولیه
+- تنظیمات Crawl
+- ایجاد Job
+- نمایش وضعیت
+- نمایش نتایج
+- فیلترها
+- Export
+- تنظیم اتصال به موتور
 
-Contact/about pages and navigation/footer links should receive higher priority.
+مسئول نیست:
 
-## Fetching tiers
+- اجرای HTTP Crawl
+- مدیریت DNS و همزمانی
+- حلقه‌های Retry
+- اجرای Workerها
+- اجرای مرورگر برای Crawl
 
-1. Asynchronous normal HTTP.
-2. HTML parsing.
-3. Headless browser only when normal HTTP does not expose enough information.
+### موتور Go
 
-Browser rendering is an escalation path, not the default.
+مسئول:
 
-## Concurrency
+- دریافت Job
+- زمان‌بندی
+- صف
+- دریافت صفحات
+- Redirect
+- Timeout
+- نرمال‌سازی URL
+- کشف لینک‌ها
+- محدودیت Crawl
+- تشخیص فناوری
+- استخراج اطلاعات تماس
+- نرمال‌سازی
+- حذف داده‌های تکراری
+- ذخیره‌سازی
+- Retry
+- Rate Limit
+- Metrics و Logging
 
-Control global concurrency and per-domain concurrency. Use bounded retries, timeouts, redirect limits, and backoff. High global concurrency must never mean unlimited requests to one domain.
+### پایگاه داده
 
-## Technology detection
+مدل دادهٔ Crawl مستقل از جداول WordPress خواهد بود.
 
-Detection is evidence-based. WordPress signals may include wp-content, wp-includes, wp-json, generator metadata, and WordPress-specific assets/endpoints. WooCommerce has its own detector.
+گزینهٔ اصلی Production: PostgreSQL.
 
-Each detection returns technology, confidence, evidence, source_url, and detected_at.
+## ۳. حالت‌های استقرار
 
-## Contact extraction
+### حالت اول — همان VPS
 
-The first version focuses on publicly displayed business contact information.
+~~~text
+WordPress -> API محلی -> Go -> Database
+~~~
 
-HTML -> visible text/attributes -> phone candidates -> validation -> country-aware normalization -> deduplication -> source URL -> persistence.
+این اولین حالت هدف است.
 
-Common tel links should also be supported.
+### حالت دوم — سرویس‌های جدا
 
-## Domain isolation
+~~~text
+مرورگر
+   |
+   v
+WordPress
+   |
+ HTTPS + API Key
+   |
+   v
+API موتور Crawl
+   |
+   v
+صف
+   |
+   +-- Worker
+   +-- Worker
+   +-- Worker
+   |
+   v
+PostgreSQL
+~~~
 
-Default scope stays within the target registrable domain. External links are not blindly followed. Subdomains can be explicitly allowed.
+پلاگین نباید بداند موتور روی همان سرور است یا سرور دیگری.
 
-## Error handling
+### حالت سوم — مقیاس‌پذیری
 
-Normalize DNS, TLS, timeout, HTTP 403/429/5xx, invalid content, oversized response, redirect loop, and parser failures. Retry transient failures with bounded backoff; do not retry permanent failures forever.
+API درخواست را دریافت می‌کند، صف کار را تقسیم می‌کند و چند Worker دامنه‌ها را پردازش می‌کنند.
 
-## Separation contract
+در شروع نباید Kubernetes یا زیرساخت توزیع‌شدهٔ پیچیده اضافه شود؛ ابتدا باید ظرفیت واقعی اندازه‌گیری شود.
 
-The key rule is: WordPress -> versioned HTTP API -> Go service.
+## ۴. چرخهٔ Crawl
 
-The plugin talks to an API, never to Go internals. This allows the Go engine to move to another server without rewriting the product.
+~~~text
+ساخت پروژه
+   ↓
+افزودن دامنه‌های اولیه
+   ↓
+ساخت Job
+   ↓
+ورود به صف
+   ↓
+Resolve دامنه
+   ↓
+دریافت صفحه اصلی
+   ↓
+تشخیص فناوری
+   ↓
+کشف صفحات مهم
+   ↓
+دریافت صفحات
+   ↓
+استخراج اطلاعات تماس عمومی
+   ↓
+نرمال‌سازی + حذف تکراری
+   ↓
+ذخیره
+   ↓
+پایان Job
+~~~
 
-## Security
+صفحات تماس، درباره ما و لینک‌های موجود در منو و Footer باید اولویت بالاتری داشته باشند.
 
-Remote mode requires HTTPS and service authentication. Validate inputs, authorize jobs/projects, limit URL/domain counts, limit response size, protect against SSRF, and restrict outbound networking where possible. The engine must not become an unrestricted proxy or internal-network fetcher.
+## ۵. روش دریافت صفحات
 
-## Observability
+### سطح ۱
+HTTP غیرهمزمان برای اکثر صفحات.
 
-Expose queued/running/completed/failed counts, retries, pages fetched, domains completed, contacts found, technologies detected, timing, current concurrency/rate, and recent errors.
+### سطح ۲
+پردازش HTML بدون اجرای مرورگر.
 
-## Scaling path
+### سطح ۳
+Headless Browser فقط زمانی که HTTP معمولی اطلاعات کافی ندهد.
 
-Start with one Go process, one queue, and one database. Then move to API + queue + N workers + PostgreSQL. Scale according to measured queue depth and network throughput.
+Browser نباید روش پیش‌فرض برای تمام صفحات باشد.
+
+## ۶. همزمانی
+
+همزمانی باید هم در سطح کل سیستم و هم برای هر دامنه کنترل شود.
+
+موارد ضروری:
+
+- حداکثر درخواست همزمان کلی
+- حداکثر درخواست همزمان برای هر دامنه
+- Timeout
+- محدودیت Redirect
+- تعداد Retry محدود
+- Backoff
+
+همزمانی زیاد نباید باعث ارسال تعداد نامحدود درخواست به یک دامنه شود.
+
+## ۷. تشخیص فناوری
+
+تشخیص باید مبتنی بر شواهد باشد.
+
+نمونهٔ شواهد WordPress:
+
+- مسیر wp-content
+- مسیر wp-includes
+- مسیر wp-json
+- متادیتای Generator
+- Assetها و Endpointهای اختصاصی WordPress
+
+WooCommerce نیز Detector مستقل خود را خواهد داشت.
+
+هر تشخیص شامل موارد زیر است:
+
+- نام فناوری
+- میزان اطمینان
+- شواهد
+- URL منبع
+- زمان تشخیص
+
+## ۸. استخراج اطلاعات تماس
+
+نسخهٔ اول روی اطلاعات تماس تجاریِ عمومی تمرکز دارد.
+
+روند:
+
+~~~text
+HTML
+ ↓
+متن و Attributeهای مرتبط
+ ↓
+شماره‌های احتمالی
+ ↓
+اعتبارسنجی
+ ↓
+نرمال‌سازی بر اساس کشور
+ ↓
+حذف تکراری
+ ↓
+ذخیره URL منبع
+~~~
+
+لینک‌های tel نیز باید پشتیبانی شوند.
+
+## ۹. محدودهٔ دامنه
+
+هر Job باید محدودهٔ مشخص داشته باشد.
+
+حالت پیش‌فرض:
+
+- ماندن داخل دامنهٔ هدف
+- دنبال نکردن کورکورانهٔ لینک‌های خارجی
+- امکان فعال کردن Subdomain به‌صورت صریح
+- امکان ثبت لینک‌های خارجی بدون Crawl کردن آن‌ها
+
+## ۱۰. مدیریت خطا
+
+خطاها باید به‌عنوان داده ثبت شوند.
+
+نمونه‌ها:
+
+- خطای DNS
+- خطای TLS
+- Timeout
+- HTTP 403/429/5xx
+- محتوای نامعتبر
+- پاسخ بیش از حد بزرگ
+- حلقهٔ Redirect
+- خطای Parser
+
+خطاهای موقت می‌توانند با Backoff محدود دوباره امتحان شوند؛ خطاهای دائمی نباید بی‌نهایت Retry شوند.
+
+## ۱۱. قرارداد جداسازی
+
+قانون اصلی:
+
+~~~text
+WordPress -> API نسخه‌بندی‌شده -> Go
+~~~
+
+پلاگین نباید مستقیماً به Packageها یا جزئیات داخلی Go وابسته باشد.
+
+این اصل باعث می‌شود موتور Go بعداً به سرور دیگری منتقل شود بدون اینکه منطق اصلی محصول بازنویسی شود.
+
+## ۱۲. امنیت
+
+حالت Remote باید HTTPS و احراز هویت سرویس داشته باشد.
+
+موارد ضروری:
+
+- احراز هویت
+- اعتبارسنجی ورودی
+- کنترل دسترسی پروژه و Job
+- محدودیت تعداد URL و دامنه
+- محدودیت حجم پاسخ
+- محافظت SSRF
+- محدودیت شبکهٔ خروجی در صورت امکان
+
+موتور نباید به Proxy نامحدود یا ابزار دسترسی به شبکهٔ داخلی تبدیل شود.
+
+## ۱۳. مانیتورینگ
+
+هر Job باید حداقل این اطلاعات را داشته باشد:
+
+- تعداد در صف
+- تعداد در حال اجرا
+- تعداد تکمیل‌شده
+- تعداد شکست‌خورده
+- تعداد Retry
+- تعداد صفحات دریافت‌شده
+- تعداد دامنه‌های تکمیل‌شده
+- تعداد اطلاعات تماس
+- تعداد فناوری‌های شناسایی‌شده
+- زمان پاسخ
+- همزمانی فعلی
+- آخرین خطاها
+
+## ۱۴. مسیر توسعه
+
+شروع:
+
+~~~text
+یک موتور Go
+یک صف
+یک Database
+~~~
+
+بعد:
+
+~~~text
+API
+ ↓
+Queue
+ ↓
+N Worker
+ ↓
+PostgreSQL
+~~~
+
+تعداد Workerها بر اساس Queue و ظرفیت واقعی شبکه افزایش داده می‌شود.
