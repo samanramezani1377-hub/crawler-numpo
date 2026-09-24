@@ -16,7 +16,7 @@ type Page struct{URL string;Status int;Title string;ContentType string;Links []s
 type Crawler struct{Client *http.Client;MaxBytes int64;MaxLinks int}
 
 func New(timeout time.Duration,maxBytes int64)*Crawler{
- return &Crawler{Client:&http.Client{Timeout:timeout,CheckRedirect:func(r *http.Request,v []*http.Request)error{
+ return &Crawler{Client:&http.Client{Transport:policy.SafeTransport(),Timeout:timeout,CheckRedirect:func(r *http.Request,v []*http.Request)error{
   if len(v)>=3{return http.ErrUseLastResponse}
   if r.URL.Scheme!="http"&&r.URL.Scheme!="https"{return http.ErrUseLastResponse}
   if policy.ValidateURL(r.URL.String())!=nil{return http.ErrUseLastResponse}
