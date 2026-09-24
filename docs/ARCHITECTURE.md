@@ -340,8 +340,8 @@ Discovery
    Detection / Extraction
 ```
 
-**Active Domain Discovery** برای غربال سریع دامنه‌های قابل دسترسی طراحی می‌شود و نباید وارد Crawl عمیق شود. **Deep Search** برای پیدا کردن و تحلیل سایت‌هایی با معیار مشخص استفاده می‌شود.
+**Active Domain Probe** برای بررسی سریع دامنه‌ها طراحی می‌شود و نباید به‌عنوان فیلتر حذفی عمل کند. Probe وضعیت Active و Signalهای فناوری را ثبت می‌کند. اگر دامنه Active باشد ولی WordPress نباشد، دامنه همچنان در Store باقی می‌ماند و فقط Classification مناسب برای آن ثبت می‌شود. **Deep Search** برای تحلیل عمیق کاندیدهایی که Routing Rule آن‌ها را انتخاب کرده است استفاده می‌شود.
 
 منابع Discovery می‌توانند Manual Seed، Seed List/CSV، Search Provider، Sitemap/robots.txt و لینک‌های کشف‌شده در Crawl باشند. Search Providerها باید پشت Interface مستقل قرار بگیرند تا وابستگی به یک سرویس خاص ایجاد نشود.
 
-هر Candidate باید Provenance داشته باشد و پیش از ورود به Queue از Normalize، Deduplicate و Policy/SSRF checks عبور کند. جزئیات در [DISCOVERY](DISCOVERY.md) آمده است.
+هر Candidate باید Provenance داشته باشد و پیش از ورود به Queue از Normalize، Deduplicate و Policy/SSRF checks عبور کند. Classificationها باید مستقل و چندگانه باشند و Routing Rule فقط مسیر پردازش بعدی را تعیین کند، نه اینکه Candidate را از داده‌های اصلی حذف کند. جزئیات در [DISCOVERY](DISCOVERY.md) آمده است.
