@@ -39,19 +39,19 @@ class Numpo_Plugin_Test extends WP_UnitTestCase {
         wp_set_current_user($user);
         $this->assertTrue(Numpo_API::permission());
     }
-}
 
     public function test_csv_forwards_raw_csv_content_type(): void {
         update_option('numpo_engine_url', 'https://engine.example.test');
         add_filter('pre_http_request', function ($response, $args, $url) {
             $this->assertSame('https://engine.example.test/api/v1/discovery/jobs/job-1/csv', $url);
             $this->assertSame('text/csv', $args['headers']['Content-Type']);
-            $this->assertSame("url\\nhttps://example.com\\n", $args['body']);
+            $this->assertSame("url\nhttps://example.com\n", $args['body']);
             return ['response' => ['code' => 200], 'body' => '{"imported":1}'];
         }, 10, 3);
         $request = new WP_REST_Request('POST', '/numpo/v1/jobs/job-1/csv');
-        $request->set_body("url\\nhttps://example.com\\n");
+        $request->set_body("url\nhttps://example.com\n");
         $response = Numpo_API::csv($request);
         $this->assertInstanceOf(WP_REST_Response::class, $response);
         $this->assertSame(200, $response->get_status());
     }
+}
