@@ -6,6 +6,7 @@ import (
  "os/exec"
  "strings"
  "time"
+ "github.com/samanramezani1377-hub/crawler-numpo/internal/policy"
 )
 
 type Result struct{URL string;Status int;ContentType string;HTML string;DurationMS int64}
@@ -21,10 +22,11 @@ func(disabledError)Error()string{return "browser rendering is disabled"}
 type ChromiumRenderer struct{Binary string;Timeout time.Duration;MaxOutput int}
 func NewChromiumRenderer(binary string,timeout time.Duration,maxOutput int)*ChromiumRenderer{if timeout<=0{timeout=30*time.Second};if maxOutput<=0{maxOutput=8<<20};return &ChromiumRenderer{Binary:binary,Timeout:timeout,MaxOutput:maxOutput}}
 func(r *ChromiumRenderer)Render(parent context.Context,rawURL string)(Result,error){
+ if e:=policy.ValidateURL(rawURL);e!=nil{return Result{},e}
  ctx,cancel:=context.WithTimeout(parent,r.Timeout);defer cancel()
  if strings.TrimSpace(r.Binary)==""{return Result{},ErrDisabled}
  start:=time.Now()
- cmd:=exec.CommandContext(ctx,r.Binary,"--headless","--disable-gpu","--dump-dom",rawURL)
+ cmd:=exec.CommandContext(ctx,r.Binary,"--headless","--disable-gpu","--disable-extensions","--no-first-run","--no-default-browser-check","--dump-dom",rawURL)
  out,err:=cmd.Output()
  if err!=nil{return Result{},err}
  if len(out)>r.MaxOutput{out=out[:r.MaxOutput]}
