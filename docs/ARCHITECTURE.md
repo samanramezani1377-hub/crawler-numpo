@@ -431,3 +431,67 @@ Deep Crawl
 ```
 
 این حلقه باید **کنترل‌شده و محدود** باشد و هر Job دارای سقف URL، عمق، Candidate و زمان اجرای مشخص باشد.
+
+
+## ۱۶. قابلیت‌های مستقل و قابل فعال/غیرفعال شدن
+
+تمام مسیرهای Discovery، Probe و Deep Crawl باید Feature/Capability مستقل داشته باشند. هیچ Worker یا Provider نباید صرفاً با وجود یک قابلیت دیگر، قابلیت وابسته‌ای را به‌صورت ضمنی فعال کند.
+
+نمونهٔ تنظیمات:
+
+```text
+discovery.enabled
+discovery.manual_seeds.enabled
+discovery.csv_import.enabled
+discovery.search_provider.enabled
+discovery.sitemap.enabled
+discovery.robots.enabled
+discovery.link_discovery.enabled
+discovery.subdomain_from_crawl.enabled
+
+active_probe.enabled
+
+deep_search.enabled
+deep_search.external_links.enabled
+deep_search.subdomains.enabled
+```
+
+### Subdomain Discovery در Deep Crawler
+
+در MVP، Deep Crawler مسئول کشف ساب‌دامین از URLها و لینک‌های مشاهده‌شده است؛ این قابلیت مستقل است:
+
+```text
+Deep Crawler
+    ↓
+[Subdomain Discovery ON?]
+    ├── NO  → continue normal crawl
+    └── YES → Host Candidate
+                  ↓
+             Normalize / Dedup / Policy
+                  ↓
+             Active Probe [ON/OFF]
+                  ↓
+             Classification / Routing
+                  ↓
+             Deep Queue
+```
+
+خاموش بودن Subdomain Discovery فقط مانع تولید Candidate جدید از این مسیر می‌شود. ساب‌دامین‌هایی که از منابع دیگر Discovery به دست آمده‌اند همچنان می‌توانند پردازش شوند.
+
+خاموش بودن Active Probe نیز نباید Candidate را حذف کند؛ فقط مرحلهٔ Probe را غیرفعال می‌کند و رفتار بعدی باید طبق Policy و Routing تنظیم‌شده تعیین شود.
+
+### Snapshot تنظیمات
+
+در شروع هر Job، تنظیمات مؤثر باید Snapshot شوند. بنابراین یک Job در حال اجرا با تغییر تنظیمات پروژه به‌صورت ناگهانی رفتار خود را عوض نمی‌کند، مگر اینکه در آینده قابلیت Dynamic Policy صراحتاً اضافه شود.
+
+### اصل استقلال
+
+```text
+Sitemap OFF ≠ Robots OFF
+Robots OFF ≠ Link Discovery OFF
+Subdomain Discovery OFF ≠ Deep Crawl OFF
+Active Probe OFF ≠ Discovery OFF
+Search Provider OFF ≠ Manual Seeds OFF
+```
+
+این استقلال باید در طراحی API، Scheduler و Workerها نیز حفظ شود.
