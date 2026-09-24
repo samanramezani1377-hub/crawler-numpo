@@ -396,3 +396,79 @@ Ruleها فقط Routing را کنترل می‌کنند و نباید باعث �
 ### Subdomain در مدل Host
 
 Subdomain Discovery از داخل Deep Crawl یک Discovery Source است و خروجی آن Candidate Host محسوب می‌شود. Host جدید باید مانند هر Candidate دیگر Normalize، Deduplicate و Policy Check شود و سپس بر اساس فعال بودن Active Probe و Routing Rules ادامه دهد.
+
+
+## PostgreSQL Physical Schema — MVP
+
+این بخش Physical Design اولیه را مشخص می‌کند؛ نام‌گذاری می‌تواند در Migrationهای آینده اصلاح شود، اما روابط و Constraintهای اصلی باید حفظ شوند.
+
+### جداول اصلی
+
+\`\`\`text
+projects
+domains
+hosts
+crawl_jobs
+pages
+technologies
+contacts
+job_errors
+
+discovery_jobs
+candidates
+domain_signals
+domain_probes
+job_configuration_snapshots
+routing_rules
+capability_settings
+\`\`\`
+
+### روابط
+
+\`\`\`text
+projects
+  ├── domains
+  │    ├── hosts
+  │    │    └── domain_probes
+  │    ├── pages
+  │    ├── technologies
+  │    ├── contacts
+  │    └── domain_signals
+  ├── crawl_jobs
+  ├── discovery_jobs
+  │    └── candidates
+  ├── capability_settings
+  ├── routing_rules
+  └── job_configuration_snapshots
+\`\`\`
+
+### Constraintهای مهم
+
+- domains(project_id, normalized_domain) باید Unique باشد.
+- hosts(domain_id, normalized_host) باید Unique باشد.
+- pages(domain_id, normalized_url) باید Unique باشد.
+- domain_probes باید وضعیت Current را قابل Query نگه دارد؛ در صورت History، Current از Observation History جدا شود.
+- candidates(discovery_job_id, normalized_url) باید از Candidate تکراری در یک Job جلوگیری کند.
+- Queue Claim باید با Transaction/Lock اتمیک انجام شود.
+
+### Indexهای MVP
+
+\`\`\`text
+domains(project_id, normalized_domain)
+hosts(domain_id, normalized_host)
+pages(domain_id, normalized_url)
+candidates(discovery_job_id, status)
+candidates(normalized_domain, status)
+candidates(queue_type, status, priority)
+domain_probes(host_id, status, expires_at)
+domain_signals(domain_id, type, name)
+technologies(domain_id, name)
+contacts(domain_id, normalized_value)
+job_errors(job_id, retryable)
+\`\`\`
+
+Index نهایی باید با Queryهای واقعی و EXPLAIN بررسی شود؛ Index اضافی بدون Query واقعی اضافه نمی‌شود.
+
+### Idempotency
+
+هر عملیات Queue که ممکن است توسط Worker یا Request تکرار شود باید Idempotent باشد. Unique Constraintهای Database آخرین لایه جلوگیری از Duplicate هستند و جایگزین Dedup در Application نمی‌شوند.
