@@ -1,5 +1,5 @@
 package store
-import("context";"encoding/json";"time";"github.com/jackc/pgx/v5";"github.com/jackc/pgx/v5/pgxpool")
+import("context";"encoding/json";"math/rand/v2";"time";"github.com/jackc/pgx/v5";"github.com/jackc/pgx/v5/pgxpool")
 type Store struct{DB *pgxpool.Pool}
 func New(ctx context.Context,dsn string)(*Store,error){db,e:=pgxpool.New(ctx,dsn);if e!=nil{return nil,e};if e=db.Ping(ctx);e!=nil{db.Close();return nil,e};return &Store{db},nil}
 func(s *Store)Close(){s.DB.Close()}
@@ -30,8 +30,9 @@ func(s *Store)ScheduleRetry(ctx context.Context,id,lastError string,attempt int)
   if _,e=tx.Exec(ctx,`UPDATE candidates SET status='failed_final',last_error=$2,lease_until=NULL,completed_at=now() WHERE id=$1`,id,lastError);e!=nil{return e}
   return tx.Commit(ctx)
  }
- delay:=time.Second*time.Duration(1<<(n-1));if delay>30*time.Second{delay=30*time.Second}
- _,e:=s.DB.Exec(ctx,`UPDATE candidates SET status='failed_retryable',last_error=$2,next_attempt_at=now()+($3 * interval '1 millisecond'),lease_until=NULL WHERE id=$1`,id,lastError,delay.Milliseconds());return e
+ base:=time.Second*time.Duration(1<<(n-1));if base>30*time.Second{base=30*time.Second}
+ delay:=time.Duration(rand.Int64N(int64(base)+1))
+ _,e:=s.DB.Exec(ctx,"UPDATE candidates SET status='failed_retryable',last_error=$2,next_attempt_at=now()+($3 * interval '1 millisecond'),lease_until=NULL WHERE id=$1",id,lastError,delay.Milliseconds());return e
 }
 func(s *Store)FinishJobIfEmpty(ctx context.Context,job string)error{var n int;if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1 AND status IN ('new','queued','processing','failed_retryable')",job).Scan(&n);e!=nil{return e};if n==0{return s.SetJobStatus(ctx,job,"completed")};return nil}
 func(s *Store)EnsureDomain(ctx context.Context,project,domain string)(string,error){_,e:=s.DB.Exec(ctx,`INSERT INTO domains(id,project_id,normalized_domain) VALUES(gen_random_uuid(),$1,$2) ON CONFLICT(project_id,normalized_domain) DO NOTHING`,project,domain);if e!=nil{return "",e};var out string;e=s.DB.QueryRow(ctx,`SELECT id::text FROM domains WHERE project_id=$1 AND normalized_domain=$2`,project,domain).Scan(&out);return out,e}
