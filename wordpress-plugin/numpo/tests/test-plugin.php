@@ -1,7 +1,7 @@
 <?php
 class Numpo_Plugin_Test extends WP_UnitTestCase {
     public function test_plugin_constants_and_version(): void {
-        $this->assertSame('0.1.0', NUMPO_VERSION);
+        $this->assertSame('0.2.0', NUMPO_VERSION);
         $this->assertFileExists(NUMPO_DIR . 'numpo.php');
     }
 
