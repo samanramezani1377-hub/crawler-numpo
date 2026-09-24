@@ -6,6 +6,7 @@ type Config struct{
  ListenAddr string
  DatabaseURL string
  APIKey string
+ AllowAnonymousAPI bool
  SearchURLTemplate string
  HTTPTimeoutSeconds int
  MaxBodyBytes int64
@@ -26,6 +27,7 @@ func Load() Config{
   ListenAddr:env("NUMPO_LISTEN_ADDR",":8080"),
   DatabaseURL:env("NUMPO_DATABASE_URL","postgres://postgres:postgres@localhost:5432/numpo?sslmode=disable"),
   APIKey:os.Getenv("NUMPO_API_KEY"),
+  AllowAnonymousAPI:boolEnv("NUMPO_ALLOW_ANONYMOUS_API",false),
   SearchURLTemplate:os.Getenv("NUMPO_SEARCH_URL_TEMPLATE"),
   HTTPTimeoutSeconds:intEnv("NUMPO_HTTP_TIMEOUT_SECONDS",15),
   MaxBodyBytes:int64Env("NUMPO_MAX_BODY_BYTES",2<<20),
