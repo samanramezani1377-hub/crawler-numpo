@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: numpo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - numpo_pg:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+  engine:
+    build: .
+    environment:
+      NUMPO_LISTEN_ADDR: ":8080"
+      NUMPO_DATABASE_URL: "postgres://postgres:postgres@postgres:5432/numpo?sslmode=disable"
+      NUMPO_API_KEY: "\${NUMPO_API_KEY:-change-me}"
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+volumes:
+  numpo_pg:
