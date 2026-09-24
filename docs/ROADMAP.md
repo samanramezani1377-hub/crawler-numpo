@@ -98,4 +98,4 @@
 
 کاربر باید بتواند یک دامنهٔ اولیه ثبت کند، Crawl را غیرهمزمان اجرا کند، فناوری‌های پشتیبانی‌شده را تشخیص دهد، اطلاعات تماس تجاریِ عمومی را استخراج و نرمال کند، منبع هر نتیجه را نگهداری کند و نتایج را از طریق پنل مشاهده و Export کند.
 
-موتور Go باید در پایان MVP مستقل از WordPress نیز قابل اجرا باشد.
+موتور Go باید در پایان MVP مستقل از WordPress نیز قابل اجرا باشد.\n\n## خروجی داده و Queryability\n\n- [x] تعریف Schema اولیهٔ خروجی\n- [ ] پیاده‌سازی مدل Contact و Email\n- [ ] پیاده‌سازی Technology Detection با Evidence\n- [ ] پیاده‌سازی Page Classification\n- [ ] پیاده‌سازی Business و Social extraction\n- [ ] پیاده‌سازی Technical Signals\n- [ ] طراحی Indexهای واقعی بر اساس Queryهای MVP\n\nمرجع: [OUTPUT-SCHEMA](OUTPUT-SCHEMA.md).\n
