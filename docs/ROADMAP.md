@@ -1,206 +1,80 @@
-# نومپو — نقشه راه
+# نومپو — نقشه راه و وضعیت
 
-## مرحله صفر — مستندسازی
+## هستهٔ MVP
 
-- [x] تفکیک Discovery از Crawl
-- [x] تعریف Active Domain Discovery
-- [x] تعریف Deep Search
-- [x] تعریف Candidate و Provenance
-- [x] طراحی Discovery API اولیه
-- [x] تعریف حالت‌های Discovery: Manual / Automatic / Hybrid
-- [x] تفکیک Discovery Source از Capabilityهای داخلی Crawl
-- [x] تعریف جریان مشترک Manual و Automatic به Candidate Store
+- [x] Discovery با حالت‌های Manual / Automatic / Hybrid
+- [x] Candidate Store و dedup اتمیک
+- [x] Active Domain Probe
+- [x] Seed / CSV Import
+- [x] robots.txt و Sitemap Discovery
+- [x] Link / Subdomain Discovery در Deep Crawl
+- [x] Discovery Provider Interface
+- [x] Search Provider صفحه‌بندی‌شده و قابل تعویض
+- [x] Crawl Budget برای URL / Page / Depth
+- [x] HTTP Crawl با redirect و DNS-aware SSRF protection
+- [x] Timeout و Retry محدود
+- [x] HTML Parser و URL normalization
+- [x] Contact / Business / Social extraction
+- [x] Technology Detection با Evidence
+- [x] Page Classification و Technical Signals
+- [x] PostgreSQL persistence
+- [x] Job errors و Dead Letter handling
+- [x] Metrics
+- [x] Unit / Integration / Race / Vet tests
 
-- [x] هدف محصول
-- [x] مرزبندی WordPress و Go
-- [x] مدل‌های استقرار
-- [x] قرارداد API
-- [x] مدل داده
-- [x] اصول کراول مسئولانه
+## WordPress Control Plane
 
-## مرحله یک — Discovery و موتور MVP
-
-- [ ] طراحی Candidate و Discovery Job با پشتیبانی از modeهای manual/automatic/hybrid
-- [ ] Active Domain Check
-- [ ] Seed List / CSV Import
-- [ ] robots.txt و Sitemap Discovery
-- [ ] Link Discovery
-- [ ] Discovery Provider Interface
-- [ ] اولین Search Provider
-- [ ] Deep Search Pipeline
-
-## مرحله یک — موتور MVP
-
-- [ ] ساخت Go Module
-- [ ] دریافت HTTP
-- [ ] نرمال‌سازی URL
-- [ ] محدود کردن دامنه
-- [ ] Crawl Budget
-- [ ] همزمانی کنترل‌شده
-- [ ] Timeout و Retry
-- [ ] Parser HTML
-- [ ] اولویت صفحات تماس
-- [ ] استخراج شماره
-- [ ] نرمال‌سازی شماره
-- [ ] تشخیص WordPress
-- [ ] تشخیص WooCommerce
-- [ ] ذخیره‌سازی ساختاریافته
-- [ ] Metrics
-- [ ] تست Unit و Integration
-
-## مرحله دو — پنل WordPress
-
-- [ ] اسکلت پلاگین
-- [ ] مدیریت پروژه
-- [ ] مدیریت دامنه‌های اولیه
-- [ ] تنظیم اتصال به موتور
-- [ ] شروع و توقف Job
-- [ ] داشبورد پیشرفت
-- [ ] جدول نتایج
-- [ ] فیلتر فناوری
-- [ ] فیلتر شماره
-- [ ] Export CSV
-
-## مرحله سه — جداسازی سرویس
-
-- [ ] API نسخه‌بندی‌شده Go
-- [ ] احراز هویت API
-- [ ] PostgreSQL
-- [ ] Docker
-- [ ] تنظیم موتور Remote
-- [ ] Health Check
-- [ ] تست سازگاری API
-
-## مرحله چهار — مقیاس
-
-- [ ] صف پایدار
-- [ ] چند Worker در Go
-- [ ] زمان‌بندی برای هر دامنه
-- [ ] کنترل Rate کلی
-- [ ] سلامت Workerها
-- [ ] Metrics صف
-- [ ] Retry و Dead Letter
-- [ ] افزایش افقی Workerها
-
-## مرحله پنج — هوشمندی فناوری
-
-- [ ] WordPress
-- [ ] WooCommerce
-- [ ] Shopify
-- [ ] Joomla
-- [ ] Magento
-- [ ] Laravel
-- [ ] تشخیص CDN و Proxy
-- [ ] تشخیص سرویس‌های Analytics
-- [ ] تشخیص فناوری‌های پرداخت
-
-هر Detector باید مستقل تست شود و شواهد تشخیص را برگرداند.
-
-## مرحله شش — اجرای مرورگر در مواقع لازم
-
-- [ ] تشخیص صفحاتی که به Render نیاز دارند
-- [ ] جداسازی Workerهای مرورگر
-- [ ] Render فقط در صورت نیاز
-- [ ] محدودیت منابع مرورگر
-- [ ] مقایسه نتیجه HTTP با Render
-
-## موارد خارج از MVP
-
-- Crawl بدون محدودیت کل اینترنت
-- دور زدن احراز هویت
-- دور زدن CAPTCHA
-- سیستم‌های پنهان‌کاری یا فرار از محدودیت
-- همزمانی نامحدود
-- ذخیرهٔ پیش‌فرض کل سایت‌ها
-- اضافه کردن زیرساخت توزیع‌شده قبل از نیاز واقعی
-
-## تعریف پایان MVP
-
-کاربر باید بتواند یک دامنهٔ اولیه ثبت کند، Crawl را غیرهمزمان اجرا کند، فناوری‌های پشتیبانی‌شده را تشخیص دهد، اطلاعات تماس تجاریِ عمومی را استخراج و نرمال کند، منبع هر نتیجه را نگهداری کند و نتایج را از طریق پنل مشاهده و Export کند.
-
-موتور Go باید در پایان MVP مستقل از WordPress نیز قابل اجرا باشد.\n\n## خروجی داده و Queryability\n\n- [x] تعریف Schema اولیهٔ خروجی\n- [x] پیاده‌سازی مدل Contact و Email\n- [x] پیاده‌سازی Technology Detection با Evidence\n- [x] پیاده‌سازی Page Classification\n- [x] پیاده‌سازی Business و Social extraction\n- [x] پیاده‌سازی Technical Signals\n- [x] طراحی Indexهای واقعی بر اساس Queryهای MVP\n\nمرجع: [OUTPUT-SCHEMA](OUTPUT-SCHEMA.md).\n
-
-## تصمیمات تکمیلی Discovery
-
-- [x] مستقل بودن قابلیت‌های Discovery و Crawl
-- [x] قابل فعال/غیرفعال بودن هر Discovery Source
-- [x] قابل فعال/غیرفعال بودن Subdomain Discovery
-- [x] قرار گرفتن Subdomain Discovery اولیه داخل Deep Crawler
-- [x] قابل فعال/غیرفعال بودن Active Probe
-- [x] قابل فعال/غیرفعال بودن Deep Search
-- [x] قابل فعال/غیرفعال بودن Routing Ruleها
-- [x] ثبت Snapshot تنظیمات مؤثر در Job
-- [x] پیاده‌سازی Feature/Capability Settings
-- [x] پیاده‌سازی Routing Rule Engine
-- [x] پیاده‌سازی Subdomain Discovery داخل Deep Crawler
-
-
-## مرحله صفر — قراردادهای اجرایی تکمیل‌شده
-
-- [x] قرارداد دقیق Discovery Job
-- [x] State Machine برای Candidate / Probe / Deep Crawl
-- [x] Crawl Scope و Budget
-- [x] PostgreSQL Physical Schema اولیه
-- [x] Retry و Failure Policy
-
-از این نقطه، قراردادهای اصلی لازم برای شروع پیاده‌سازی MVP مشخص شده‌اند.
-
-### ترتیب پیاده‌سازی بعدی
-
-1. Go Module و ساختار Packageها
-2. PostgreSQL migrations و Repositoryها
-3. URL/Domain/Host normalization
-4. Candidate Store و atomic dedup
-5. Active Probe
-6. Discovery Providers
-7. Routing Engine
-8. Deep Crawl
-9. Detection و Extraction
-10. API و Integration با WordPress
-
-هیچ Search Provider یا Browser Worker نباید قبل از تثبیت Interfaceهای مربوطه به Crawl Core وابستگی مستقیم پیدا کند.
-
-
-## وضعیت پیاده‌سازی جاری
-
-- [x] Atomic page/domain budget transaction
-- [x] Job error API
-- [x] Candidate pagination API
-- [x] Candidate CSV import/export
-- [x] Effective capability snapshot
-- [x] Extraction persistence for page/business/social data
-- [ ] Full E2E API-to-persistence test
-- [x] Security hardening suite for IPv4/IPv6/local/reserved targets and protected dialing
-- [x] Global cross-worker domain rate limiter
-- [x] HTTP-date Retry-After support
-- [x] Production queue metrics and dead-letter handling
-- [x] Browser renderer interface and explicit disabled fallback; [ ] Chromium/Playwright worker
-- [ ] Full WordPress project/domain/results dashboard
-
-## وضعیت پس از سخت‌سازی Production
-
-- [x] WordPress plugin PHPUnit + real WordPress/MySQL CI
-- [x] Installable WordPress plugin ZIP artifact after passing tests
-- [x] Prometheus-compatible runtime metrics endpoint
-- [x] Retry backoff with jitter
-- [x] SSRF tests for IPv4/IPv6/local/reserved targets
-- [x] Optional browser renderer interface without coupling Crawl Core to a browser SDK
-- [x] Real Chromium browser renderer with isolated process escalation
-- [ ] Full API→DB→queue→probe→routing→crawl→extract→persist→API E2E scenario
-- [ ] Search provider adapters beyond configurable HTTP template
-- [x] WordPress discovery/results dashboard with resource tables and CSV export
-
-
-## وضعیت UI و اجرای مرورگر — تکمیل فعلی
-
-- [x] صفحه Discovery با Manual / Automatic / Hybrid
-- [x] انتخاب Country / TLD به‌عنوان فیلتر اضافه
-- [x] تنظیم Limits و Capabilities از پنل WordPress
-- [x] نمایش وضعیت Job و منابع Domains / Hosts / Pages / Technologies / Contacts / Business / Social / Classifications / Probes
-- [x] Cancel و CSV Export از پنل
 - [x] تنظیم Engine URL و API Key
-- [x] تنظیم Search Provider template در تنظیمات WordPress
-- [x] تنظیم Scope، Rate Limit و Probe TTL در تنظیمات WordPress
-- [x] Browser escalation اختیاری با Chromium محلی و محدودیت زمان/خروجی
+- [x] مدیریت پروژه و دامنه
+- [x] Manual / Automatic / Hybrid Discovery UI
+- [x] Job status و cancel
+- [x] جدول Domains / Hosts / Pages / Technologies / Contacts / Business / Social / Classifications / Probes
+- [x] CSV import / export
+- [x] PHPUnit با WordPress واقعی و MySQL
+- [x] ساخت ZIP نصب‌شدنی در CI
 
-مواردی که عمداً تا بعد از اجرای CI نهایی به‌عنوان Done علامت نخورده‌اند: تست E2E کامل API→DB→queue→probe→routing→crawl→extract→persist→API، تست بار/benchmark، و Detectorهای بیشتر. این موارد نیازمند اجرای واقعی زیرساخت و اعتبارسنجی end-to-end هستند.
+## Production Hardening
+
+- [x] API نسخه‌بندی‌شده و authentication با fail-closed default
+- [x] PostgreSQL migrations و runtime schema
+- [x] Atomic queue leasing
+- [x] Global cross-worker domain rate limiting
+- [x] Central retry decision policy و Retry-After
+- [x] Candidate dead-letter handling
+- [x] Browser escalation با concurrency محدود
+- [x] Browser egress SSRF proxy برای HTTP و HTTPS
+- [x] Docker Compose health checks و secrets از environment
+- [x] E2E: API → DB → queue → probe → routing → crawl → extract → persist → API
+- [x] Concurrent Worker load test
+- [x] CI build / test / race / vet / PHPUnit / package / container validation
+
+## وضعیت Browser
+
+Chromium فقط در صورت نیاز به Render فراخوانی می‌شود. هر Render یک proxy محلی با policy مشترک SSRF ایجاد می‌کند و Chromium تمام ترافیک خود را از آن عبور می‌دهد. مقصدهای private / loopback / reserved و DNSهایی که به چنین مقصدهایی resolve می‌شوند توسط policy رد می‌شوند.
+
+## وضعیت Search
+
+Search به یک interface مستقل تبدیل شده است. Provider فعلی HTTP از templateهای `{query}` و `{page}`، timeout، redirect validation، pagination، parsing JSON/line/HTML، normalization و dedup پشتیبانی می‌کند. اضافه‌کردن Provider اختصاصی بعدی بدون تغییر Crawl Core امکان‌پذیر است.
+
+## وضعیت Plugin Source
+
+تنها source رسمی پلاگین:
+
+`wordpress-plugin/numpo`
+
+tree قدیمی `numpo/` حذف شده تا source of truth دوگانه وجود نداشته باشد.
+
+## Migration History
+
+شماره‌گذاری قدیمی شامل دو migration با prefix `002` بود. migration queue lease به `007_queue_leases.sql` منتقل شده و SQL آن idempotent است؛ بنابراین دیتابیس‌های جدید تاریخچهٔ مرتب دارند و دیتابیس‌های قبلی با اجرای مجدد SQL به وضعیت صحیح می‌رسند.
+
+## موارد توسعهٔ بعدی، خارج از شرط تکمیل MVP
+
+- [ ] Providerهای جستجوی اختصاصی بیشتر
+- [ ] Detectorهای فناوری بیشتر
+- [ ] Benchmark گسترده و capacity planning
+- [ ] Browser lifecycle / crash recovery / per-render resource telemetry
+- [ ] Dashboard تحلیلی پیشرفته‌تر با نمودار و exploration عمیق نتایج
+- [ ] Strict gofmt enforcement پس از یک commit مستقل formatting
+
+این موارد feature/scale work هستند؛ هستهٔ MVP و سخت‌سازی فعلی به آن‌ها وابسته نیست.
