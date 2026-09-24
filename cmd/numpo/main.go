@@ -1,0 +1,3 @@
+package main
+import("context";"log";"net/http";"time";"github.com/samanramezani1377-hub/crawler-numpo/internal/config";"github.com/samanramezani1377-hub/crawler-numpo/internal/httpapi";"github.com/samanramezani1377-hub/crawler-numpo/internal/store")
+func main(){cfg:=config.Load();st,e:=store.New(context.Background(),cfg.DatabaseURL);if e!=nil{log.Fatal(e)};defer st.Close();srv:=&http.Server{Addr:cfg.ListenAddr,Handler:httpapi.New(st,cfg),ReadHeaderTimeout:5*time.Second,ReadTimeout:30*time.Second,WriteTimeout:30*time.Second,IdleTimeout:60*time.Second};log.Printf("numpo engine listening on %s",cfg.ListenAddr);if e:=srv.ListenAndServe();e!=nil&&e!=http.ErrServerClosed{log.Fatal(e)}}
