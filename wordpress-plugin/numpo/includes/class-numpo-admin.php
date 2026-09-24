@@ -63,7 +63,15 @@ class Numpo_Admin {
 })();
  </script><?php }
  public static function settings(){if(!current_user_can('manage_options'))return;?>
- <div class="wrap"><h1>Numpo Settings</h1><form method="post" action="<?php echo esc_url(admin_url('admin-post.php'));?>"><?php wp_nonce_field('numpo_save');?><input type="hidden" name="action" value="numpo_save">
+ <div class="wrap"><h1>Numpo Settings</h1>
+  <?php $diag=Numpo_Diagnostics::check(); ?>
+  <div class="postbox" style="padding:16px;max-width:1100px"><h2>Runtime diagnostics</h2>
+   <p><strong><?php echo $diag['ok']?'Ready':'Blocked'; ?></strong></p>
+   <table class="widefat striped"><thead><tr><th>Component</th><th>Status</th><th>Value</th></tr></thead><tbody>
+   <?php foreach($diag['checks'] as $check): ?><tr><td><?php echo esc_html($check['label']); ?></td><td><?php echo $check['ok']?'OK':($check['required']?'Required':'Optional'); ?></td><td><?php echo esc_html($check['value']); ?></td></tr><?php endforeach; ?>
+   </tbody></table>
+   <p class="description">Linux amd64, PHP exec(), bundled engine and bundled PostgreSQL are required for bundled mode. Chromium is optional and is only required for browser rendering.</p>
+  </div><form method="post" action="<?php echo esc_url(admin_url('admin-post.php'));?>"><?php wp_nonce_field('numpo_save');?><input type="hidden" name="action" value="numpo_save">
   <h2>Engine runtime</h2><table class="form-table">
    <tr><th>Engine mode</th><td><select name="runtime_mode"><option value="bundled" <?php selected(Numpo_Settings::runtime_mode(),'bundled');?>>Bundled (recommended)</option><option value="external" <?php selected(Numpo_Settings::runtime_mode(),'external');?>>External</option></select><p class="description">Bundled runs the Go engine and its PostgreSQL runtime from this plugin package. External keeps the same API contract for a separately managed engine.</p></td></tr>
    <tr><th>Engine URL</th><td><input class="regular-text" name="engine_url" value="<?php echo esc_attr(Numpo_Settings::engine_url());?>" placeholder="http://127.0.0.1:8080"><p class="description">Base URL of the Go engine.</p></td></tr>
