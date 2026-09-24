@@ -24,7 +24,16 @@ add_action('wp_ajax_numpo_admin_proxy',function(){
  $method=(str_ends_with($path,'/cancel')||$path==='/jobs')?'POST':'GET';
  $req=new WP_REST_Request($method,'/numpo/v1'.$path);
  $parts=explode('/',trim($path,'/')); $r=null;
- if(count($parts)>=2 && $parts[0]==='jobs'){ $req->set_param('id',$parts[1]); if(count($parts)>=3 && $parts[2]==='cancel'){$r=Numpo_API::cancel($req);} elseif(count($parts)>=3 && $parts[2]==='errors'){$r=Numpo_API::errors($req);} elseif(count($parts)>=3){$req->set_param('resource',$parts[2]);$r=Numpo_API::resource($req);} else {$r=Numpo_API::get($req);} }
+ if($path==='/jobs' && $method==='POST'){
+  $body=[];
+  foreach(['project_id','mode','seeds','sources','target','limits','capabilities'] as $key){
+   $value=wp_unslash($_POST[$key]??'');
+   if(in_array($key,['seeds','sources','target','limits','capabilities'],true)){
+    $decoded=json_decode($value,true); $body[$key]=is_array($decoded)?$decoded:[];
+   } else { $body[$key]=sanitize_text_field($value); }
+  }
+  $req->set_body_params($body); $r=Numpo_API::create($req);
+ } elseif(count($parts)>=2 && $parts[0]==='jobs'){ $req->set_param('id',$parts[1]); if(count($parts)>=3 && $parts[2]==='cancel'){$r=Numpo_API::cancel($req);} elseif(count($parts)>=3 && $parts[2]==='errors'){$r=Numpo_API::errors($req);} elseif(count($parts)>=3){$req->set_param('resource',$parts[2]);$r=Numpo_API::resource($req);} else {$r=Numpo_API::get($req);} }
  if($r===null)wp_send_json_error('Invalid path',400);
  if(is_wp_error($r))wp_send_json_error($r->get_error_message(),$r->get_error_data()['status']??500);
  wp_send_json_success($r->get_data());
