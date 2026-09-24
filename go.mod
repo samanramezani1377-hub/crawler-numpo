@@ -3,7 +3,7 @@ module github.com/samanramezani1377-hub/crawler-numpo
 go 1.23.0
 
 require (
-	github.com/google/uuid v1.6.0
+	github.com/chromedp/chromedp v0.11.0\n\tgithub.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.2
 	golang.org/x/net v0.34.0
 )
