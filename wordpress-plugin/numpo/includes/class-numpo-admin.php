@@ -25,7 +25,7 @@ class Numpo_Admin {
   <a href="#np-start" data-view="np-start">شروع Crawl</a><a href="#np-history" data-view="np-history">Job History</a><a href="#np-monitor" data-view="np-monitor">مانیتورینگ</a><a href="#np-results" data-view="np-results">نتایج</a><a href="#np-export" data-view="np-export">خروجی‌ها</a><a href="#np-settings" data-view="np-settings">تنظیمات</a><a href="#np-runtime" data-view="np-runtime">وضعیت سیستم</a>
  </nav>
 
- <section id="np-start" class="np-monitor-label">
+ <section id="np-start" class="np-section np-view">
   <div class="np-heading"><div><h2>۱. شروع Crawl</h2><p>Job جدید را بساز، محدوده را مشخص کن و Crawl را شروع کن.</p></div><span class="np-badge">Job Setup</span></div>
   <form id="numpo-form" method="post" action="" onsubmit="return false;">
    <div class="np-grid">
@@ -47,15 +47,15 @@ class Numpo_Admin {
   </form>
  </section>
 
- <section id="np-history" class="np-monitor-label"><div class="np-heading"><div><h2>۲. تاریخچه Jobها</h2><p>هیچ Crawl قبلی با شروع Job جدید حذف نمی‌شود. یک Job را انتخاب کن تا مانیتورینگ، نتایج و خروجی همان Job نمایش داده شود.</p></div><span class="np-badge">Persistent History</span><button type="button" class="np-btn np-ghost" id="np-all-project">همه نتایج Project</button></div><div class="np-card"><div id="numpo-job-history"><div class="np-muted">در حال بارگذاری Jobها…</div></div><div id="numpo-project-summary" class="np-project-summary"></div></div></section>
+ <section id="np-history" class="np-section np-view"><div class="np-heading"><div><h2>۲. تاریخچه Jobها</h2><p>هیچ Crawl قبلی با شروع Job جدید حذف نمی‌شود. یک Job را انتخاب کن تا مانیتورینگ، نتایج و خروجی همان Job نمایش داده شود.</p></div><span class="np-badge">Persistent History</span><button type="button" class="np-btn np-ghost" id="np-all-project">همه نتایج Project</button></div><div class="np-card"><div id="numpo-job-history"><div class="np-muted">در حال بارگذاری Jobها…</div></div><div id="numpo-project-summary" class="np-project-summary"></div></div></section>
 
- <section id="np-monitor" class="np-monitor-label"><div class="np-heading"><div><h2>۳. مانیتورینگ و کنترل Job</h2><p>وضعیت لحظه‌ای و کنترل‌های Job انتخاب‌شده.</p></div><span class="np-badge">Live Monitor</span></div><div id="numpo-dashboard"></div></section>
+ <section id="np-monitor" class="np-section np-view"><div class="np-heading"><div><h2>۳. مانیتورینگ و کنترل Job</h2><p>وضعیت لحظه‌ای و کنترل‌های Job انتخاب‌شده.</p></div><span class="np-badge">Live Monitor</span></div><div id="numpo-dashboard"></div></section>
 
- <section id="np-results" class="np-monitor-label"><div class="np-heading"><div><h2>۴. نتایج Crawl</h2><p>نتایج دقیق Job انتخاب‌شده؛ تغییر Job در تاریخچه این بخش را هم تغییر می‌دهد.</p></div><span class="np-badge">Results</span></div><div id="numpo-results-panel" class="np-card"><div class="np-muted">یک Job را از تاریخچه انتخاب کن.</div></div></section>
+ <section id="np-results" class="np-section np-view"><div class="np-heading"><div><h2>۴. نتایج Crawl</h2><p>نتایج دقیق Job انتخاب‌شده؛ تغییر Job در تاریخچه این بخش را هم تغییر می‌دهد.</p></div><span class="np-badge">Results</span></div><div id="numpo-results-panel" class="np-card"><div class="np-muted">یک Job را از تاریخچه انتخاب کن.</div></div></section>
 
- <section id="np-export" class="np-monitor-label"><div class="np-heading"><div><h2>۵. Export Center</h2><p>خروجی همیشه به Job انتخاب‌شده متصل است؛ Job جدید، خروجی قبلی را جایگزین نمی‌کند.</p></div><span class="np-badge">Exports</span></div><div id="numpo-export-panel" class="np-card"><div class="np-muted">یک Job را از تاریخچه انتخاب کن.</div></div></section>
+ <section id="np-export" class="np-section np-view"><div class="np-heading"><div><h2>۵. Export Center</h2><p>خروجی همیشه به Job انتخاب‌شده متصل است؛ Job جدید، خروجی قبلی را جایگزین نمی‌کند.</p></div><span class="np-badge">Exports</span></div><div id="numpo-export-panel" class="np-card"><div class="np-muted">یک Job را از تاریخچه انتخاب کن.</div></div></section>
 
- <section id="np-settings" class="np-monitor-label"><div class="np-heading"><div><h2>۶. تنظیمات Numpo</h2><p>تنظیمات پیش‌فرض Jobهای بعدی را همین‌جا مدیریت کن.</p></div><span class="np-badge">Settings</span></div>
+ <section id="np-settings" class="np-section np-view"><div class="np-heading"><div><h2>۶. تنظیمات Numpo</h2><p>تنظیمات پیش‌فرض Jobهای بعدی را همین‌جا مدیریت کن.</p></div><span class="np-badge">Settings</span></div>
   <form method="post" action="<?php echo esc_url(admin_url('admin-post.php'));?>">
    <?php wp_nonce_field('numpo_save');?><input type="hidden" name="action" value="numpo_save">
    <div class="np-grid">
@@ -68,7 +68,7 @@ class Numpo_Admin {
   </form>
  </section>
 
- <section id="np-runtime" class="np-monitor-label"><div class="np-heading"><div><h2>۷. وضعیت سیستم</h2><p>وضعیت Runtime فعلی Numpo را قبل از Crawl بررسی کن.</p></div><span class="np-badge">PHP-only</span></div><div class="np-runtime"><div class="np-runtime-item"><b>PHP Runtime</b><br><span class="<?php echo $diag['ok']?'np-ok':'np-warn';?>"><?php echo $diag['ok']?'Ready':'Blocked';?></span></div><div class="np-runtime-item"><b>Architecture</b><br><span class="np-ok">PHP-only</span></div><div class="np-runtime-item"><b>External Engine</b><br><span class="np-ok">Not required</span></div></div><div class="np-card" style="margin-top:10px"><table class="np-table"><thead><tr><th>Component</th><th>Status</th><th>Value</th></tr></thead><tbody><?php foreach($diag['checks'] as $check):?><tr><td><?php echo esc_html($check['label']);?></td><td><?php echo $check['ok']?'OK':($check['required']?'Required':'Optional');?></td><td><?php echo esc_html($check['value']);?></td></tr><?php endforeach;?></tbody></table></div></section>
+ <section id="np-runtime" class="np-section np-view"><div class="np-heading"><div><h2>۷. وضعیت سیستم</h2><p>وضعیت Runtime فعلی Numpo را قبل از Crawl بررسی کن.</p></div><span class="np-badge">PHP-only</span></div><div class="np-runtime"><div class="np-runtime-item"><b>PHP Runtime</b><br><span class="<?php echo $diag['ok']?'np-ok':'np-warn';?>"><?php echo $diag['ok']?'Ready':'Blocked';?></span></div><div class="np-runtime-item"><b>Architecture</b><br><span class="np-ok">PHP-only</span></div><div class="np-runtime-item"><b>External Engine</b><br><span class="np-ok">Not required</span></div></div><div class="np-card" style="margin-top:10px"><table class="np-table"><thead><tr><th>Component</th><th>Status</th><th>Value</th></tr></thead><tbody><?php foreach($diag['checks'] as $check):?><tr><td><?php echo esc_html($check['label']);?></td><td><?php echo $check['ok']?'OK':($check['required']?'Required':'Optional');?></td><td><?php echo esc_html($check['value']);?></td></tr><?php endforeach;?></tbody></table></div></section>
 </div>
 <script>
 (function(){
@@ -177,7 +177,7 @@ function selectJob(id){if(!id)return;activeJobId=String(id);localStorage.setItem
   if(preview)parts.push('پاسخ Engine: '+preview);
   return parts.join(' | ');
  }
- function showError(error){root.innerHTML='<div class="notice notice-error"><p>'+esc(formatError(error))+'</p></div>';}
+ function showError(error){const msg='<div class="notice notice-error"><p>'+esc(formatError(error))+'</p></div>';root.innerHTML=msg;const start=document.getElementById('np-start');if(start){let box=document.getElementById('numpo-start-error');if(!box){box=document.createElement('div');box.id='numpo-start-error';box.style.marginTop='12px';const grid=form&&form.querySelector('.np-grid');if(grid)grid.parentNode.insertBefore(box,grid);else start.appendChild(box);}box.innerHTML=msg;}showSection('np-start',true);}
  async function load(id){
   activeJobId=id;localStorage.setItem('numpo_active_job_id',id);
   try{
@@ -230,6 +230,7 @@ function selectJob(id){if(!id)return;activeJobId=String(id);localStorage.setItem
    const limits={max_pages:Number(f.get('max_pages')),max_urls:Number(f.get('max_urls')),max_depth:Number(f.get('max_depth')),max_candidates_per_page:Number(f.get('max_candidates_per_page')),revisit_after:Number(f.get('revisit_after')||0)};
    const body={project_id:String(f.get('project_id')||''),mode:String(f.get('mode')||'manual'),seeds,sources,target,limits,capabilities:caps(f)};
    const result=await api('/jobs',{method:'POST',numpoStart:true,body});
+    const startError=document.getElementById('numpo-start-error');if(startError)startError.innerHTML='';
    if(!result||!result.job_id)throw new Error('Engine job ID در پاسخ ایجاد Job وجود ندارد.');
    activeJobId=String(result.job_id);localStorage.setItem('numpo_active_job_id',activeJobId);
    const s=document.getElementById('numpo-status');if(s)s.textContent='Job #'+activeJobId+' · '+jobStatusLabel(result.status||'queued');
