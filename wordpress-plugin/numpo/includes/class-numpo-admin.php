@@ -69,7 +69,8 @@ class Numpo_Admin {
    <div class="numpo-card numpo-wide"><h2>Routing / capabilities</h2><div class="numpo-checks"><?php echo self::capChecks();?></div></div>
    <div class="numpo-actions"><button class="button button-primary">Start discovery</button><button type="button" class="button" id="numpo-refresh">Refresh</button><span id="numpo-status" class="numpo-status"></span></div>
   </form>
-  <div id="numpo-dashboard" style="max-width:1100px"></div>
+  <div id="numpo-dashboard" style="max-width:1240px"></div>
+  <div id="numpo-control-center" class="numpo-card numpo-wide" style="margin-top:16px;display:none"><div class="numpo-section-title"><h2>Control Center</h2><span class="numpo-pill">Live</span></div><p class="description">همه کنترل‌ها، مانیتورینگ و خروجی‌های Job فعال در همین صفحه نمایش داده می‌شوند.</p></div>
  </div>
  <script>
 (function(){
@@ -214,4 +215,5 @@ class Numpo_Admin {
   update_option('numpo_allow_external_links',isset($_POST['allow_external_links'])?'1':'0');
   wp_safe_redirect(admin_url('admin.php?page=numpo-settings&updated=1'));exit;
  }
-}
+}   document.getElementById('numpo-control-center').style.display='block';
+
