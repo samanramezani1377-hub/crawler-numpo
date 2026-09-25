@@ -29,7 +29,7 @@ add_action('wp_ajax_numpo_admin_create',function(){
  $caps=json_decode(wp_unslash($_POST['capabilities']??'{}'),true);
  $body=['project_id'=>sanitize_text_field(wp_unslash($_POST['project_id']??'')),'mode'=>sanitize_key($_POST['mode']??'manual'),'seeds'=>is_array($seeds)?array_values($seeds):[],'sources'=>is_array($sources)?$sources:[],'target'=>is_array($target)?$target:[],'limits'=>is_array($limits)?$limits:[]];
  if(is_array($caps))$body['capabilities']=$caps;
- $req=new WP_REST_Request('POST','/numpo/v1/jobs');$req->set_body_params($body);
+ $req=new WP_REST_Request('POST','/numpo/v1/jobs');$req->set_header('Content-Type','application/json');$req->set_body(wp_json_encode($body));
  $r=Numpo_API::create($req);
  if(is_wp_error($r)){numpo_ajax_clean_output();wp_send_json_error($r->get_error_message(),$r->get_error_data()['status']??500);}
  numpo_ajax_clean_output();wp_send_json_success($r->get_data());
@@ -49,7 +49,7 @@ add_action('wp_ajax_numpo_admin_proxy',function(){
     $decoded=json_decode($value,true); $body[$key]=is_array($decoded)?$decoded:[];
    } else { $body[$key]=sanitize_text_field($value); }
   }
-  $req->set_body_params($body); $r=Numpo_API::create($req);
+  $req->set_header('Content-Type','application/json');$req->set_body(wp_json_encode($body)); $r=Numpo_API::create($req);
  } elseif(count($parts)>=2 && $parts[0]==='jobs'){
   $req->set_param('id',$parts[1]);
   if(count($parts)>=3 && $parts[2]==='cancel'){$r=Numpo_API::cancel($req);}
