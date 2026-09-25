@@ -34,6 +34,42 @@ func(s *Store)ScheduleRetry(ctx context.Context,id,lastError string,attempt int)
  delay:=time.Duration(rand.Int64N(int64(base)+1))
  _,e:=s.DB.Exec(ctx,"UPDATE candidates SET status='failed_retryable',last_error=$2,next_attempt_at=now()+($3 * interval '1 millisecond'),lease_until=NULL WHERE id=$1",id,lastError,delay.Milliseconds());return e
 }
+func(s *Store)GetJobRuntimeMetrics(ctx context.Context,job string)(map[string]any,error){
+ var candidates,queued,processing,retryable,completed,failed int
+ if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1",job).Scan(&candidates);e!=nil{return nil,e}
+ if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1 AND status IN ('new','queued')",job).Scan(&queued);e!=nil{return nil,e}
+ if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1 AND status='processing'",job).Scan(&processing);e!=nil{return nil,e}
+ if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1 AND status='failed_retryable'",job).Scan(&retryable);e!=nil{return nil,e}
+ if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1 AND status='completed'",job).Scan(&completed);e!=nil{return nil,e}
+ if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1 AND status='failed_final'",job).Scan(&failed);e!=nil{return nil,e}
+ var pages,domains,technologies,contacts,business,social,classifications,probes,errors int
+ var project string
+ if e:=s.DB.QueryRow(ctx,"SELECT project_id FROM discovery_jobs WHERE id=$1",job).Scan(&project);e!=nil{return nil,e}
+ queries:=[]struct{dest *int;q string}{
+  {&domains,"SELECT count(*) FROM domains WHERE project_id=$1"},
+  {&pages,"SELECT count(*) FROM pages p JOIN domains d ON p.domain_id=d.id WHERE d.project_id=$1"},
+  {&technologies,"SELECT count(*) FROM technologies t JOIN domains d ON t.domain_id=d.id WHERE d.project_id=$1"},
+  {&contacts,"SELECT count(*) FROM contacts t JOIN domains d ON t.domain_id=d.id WHERE d.project_id=$1"},
+  {&business,"SELECT count(*) FROM business_profiles t JOIN domains d ON t.domain_id=d.id WHERE d.project_id=$1"},
+  {&social,"SELECT count(*) FROM social_profiles t JOIN domains d ON t.domain_id=d.id WHERE d.project_id=$1"},
+  {&classifications,"SELECT count(*) FROM page_classifications t JOIN domains d ON t.domain_id=d.id WHERE d.project_id=$1"},
+  {&probes,"SELECT count(*) FROM domain_probes p JOIN hosts h ON p.host_id=h.id JOIN domains d ON h.domain_id=d.id WHERE d.project_id=$1"},
+  {&errors,"SELECT count(*) FROM job_errors WHERE job_id=$1"},
+ }
+ for _,x:=range queries{arg:=any(project);if strings.Contains(x.q,"job_id=$1"){arg=job};if e:=s.DB.QueryRow(ctx,x.q,arg).Scan(x.dest);e!=nil{return nil,e}}
+ var currentURL string
+ _=s.DB.QueryRow(ctx,"SELECT url FROM candidates WHERE discovery_job_id=$1 AND status='processing' ORDER BY processing_started_at DESC NULLS LAST LIMIT 1",job).Scan(&currentURL)
+ var lastError,lastErrorAt string
+ _=s.DB.QueryRow(ctx,"SELECT message,created_at::text FROM job_errors WHERE job_id=$1 ORDER BY created_at DESC LIMIT 1",job).Scan(&lastError,&lastErrorAt)
+ var lastCandidate,lastCandidateAt string
+ _=s.DB.QueryRow(ctx,"SELECT url,discovered_at::text FROM candidates WHERE discovery_job_id=$1 ORDER BY discovered_at DESC LIMIT 1",job).Scan(&lastCandidate,&lastCandidateAt)
+ return map[string]any{
+  "candidates":candidates,"queued":queued,"processing":processing,"retryable":retryable,"completed":completed,"failed":failed,
+  "domains":domains,"pages":pages,"technologies":technologies,"contacts":contacts,"business":business,"social":social,"classifications":classifications,"probes":probes,"errors":errors,
+  "current_url":currentURL,"last_error":lastError,"last_error_at":lastErrorAt,"last_candidate":lastCandidate,"last_candidate_at":lastCandidateAt,
+ },nil
+}
+
 func(s *Store)FinishJobIfEmpty(ctx context.Context,job string)error{var n int;if e:=s.DB.QueryRow(ctx,"SELECT count(*) FROM candidates WHERE discovery_job_id=$1 AND status IN ('new','queued','processing','failed_retryable')",job).Scan(&n);e!=nil{return e};if n==0{return s.SetJobStatus(ctx,job,"completed")};return nil}
 func(s *Store)EnsureDomain(ctx context.Context,project,domain string)(string,error){_,e:=s.DB.Exec(ctx,`INSERT INTO domains(id,project_id,normalized_domain) VALUES(gen_random_uuid(),$1,$2) ON CONFLICT(project_id,normalized_domain) DO NOTHING`,project,domain);if e!=nil{return "",e};var out string;e=s.DB.QueryRow(ctx,`SELECT id::text FROM domains WHERE project_id=$1 AND normalized_domain=$2`,project,domain).Scan(&out);return out,e}
 func(s *Store)EnsureHost(ctx context.Context,domainID,host string)(string,error){_,e:=s.DB.Exec(ctx,`INSERT INTO hosts(id,domain_id,normalized_host) VALUES(gen_random_uuid(),$1,$2) ON CONFLICT(domain_id,normalized_host) DO NOTHING`,domainID,host);if e!=nil{return "",e};var out string;e=s.DB.QueryRow(ctx,`SELECT id::text FROM hosts WHERE domain_id=$1 AND normalized_host=$2`,domainID,host).Scan(&out);return out,e}
