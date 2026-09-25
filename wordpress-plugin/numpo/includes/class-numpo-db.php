@@ -8,7 +8,7 @@ class Numpo_DB {
   $p=$wpdb->prefix.'numpo_';
   return [
    'jobs'=>$p.'jobs','candidates'=>$p.'candidates','domains'=>$p.'domains','pages'=>$p.'pages',
-   'technologies'=>$p.'technologies','contacts'=>$p.'contacts','facts'=>$p.'facts','errors'=>$p.'errors'
+   'technologies'=>$p.'technologies','contacts'=>$p.'contacts','facts'=>$p.'facts','errors'=>$p.'errors','memory'=>$p.'crawl_memory'
   ];
  }
  public static function install(){
@@ -17,6 +17,15 @@ class Numpo_DB {
   require_once ABSPATH.'wp-admin/includes/upgrade.php';
   $t=self::tables();$charset=$wpdb->get_charset_collate();
   $sql=[];
+  $sql[]="CREATE TABLE {$t['memory']} (
+   id varchar(64) NOT NULL, project_id varchar(191) NOT NULL, normalized_url text NOT NULL,
+   url_hash char(64) NOT NULL, normalized_domain varchar(191) NOT NULL,
+   first_seen_at datetime NOT NULL, last_seen_at datetime NOT NULL, last_crawled_at datetime NULL,
+   crawl_count int unsigned NOT NULL DEFAULT 0, content_hash char(64) NULL,
+   next_crawl_at datetime NULL, status varchar(30) NOT NULL DEFAULT 'discovered',
+   PRIMARY KEY(id), UNIQUE KEY project_url(project_id,url_hash), KEY project_next(project_id,next_crawl_at),
+   KEY project_domain(project_id,normalized_domain)
+  ) $charset;";
   $sql[]="CREATE TABLE {$t['jobs']} (
    id varchar(64) NOT NULL, project_id varchar(191) NOT NULL, mode varchar(20) NOT NULL,
    status varchar(30) NOT NULL DEFAULT 'queued', config longtext NULL, max_pages int unsigned NOT NULL DEFAULT 100,
@@ -100,6 +109,16 @@ class Numpo_DB {
   if($status==='cancelled')$data['cancelled_at']=self::now();
   return $wpdb->update($t['jobs'],$data,['id'=>$id])!==false;
  }
+ public static function remember_url($project,$url,$crawled=false,$content_hash='',$revisit_after=0){
+  global $wpdb;$t=self::tables();$n=Numpo_Crawler::normalize_url($url);if(!$n)return null;$parts=wp_parse_url($n);if(empty($parts['host']))return null;$domain=Numpo_Crawler::domain(strtolower($parts['host']));$hash=hash('sha256',$n);$now=self::now();
+  $row=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['memory']} WHERE project_id=%s AND url_hash=%s",$project,$hash),ARRAY_A);
+  if($row){$data=['last_seen_at'=>$now];if($crawled){$data['last_crawled_at']=$now;$data['crawl_count']=(int)$row['crawl_count']+1;$data['content_hash']=$content_hash?:$row['content_hash'];$data['next_crawl_at']=$revisit_after>0?gmdate('Y-m-d H:i:s',time()+$revisit_after):null;$data['status']='crawled';}$wpdb->update($t['memory'],$data,['id'=>$row['id']]);return $row['id'];}
+  $id=self::id();$wpdb->insert($t['memory'],['id'=>$id,'project_id'=>$project,'normalized_url'=>$n,'url_hash'=>$hash,'normalized_domain'=>$domain,'first_seen_at'=>$now,'last_seen_at'=>$now,'last_crawled_at'=>$crawled?$now:null,'crawl_count'=>$crawled?1:0,'content_hash'=>$content_hash?:null,'next_crawl_at'=>$crawled&&$revisit_after>0?gmdate('Y-m-d H:i:s',time()+$revisit_after):null,'status'=>$crawled?'crawled':'discovered']);return $id;
+ }
+ public static function memory_row($project,$url){global $wpdb;$t=self::tables();$n=Numpo_Crawler::normalize_url($url);if(!$n)return null;return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['memory']} WHERE project_id=%s AND url_hash=%s",$project,hash('sha256',$n)),ARRAY_A);}
+ public static function should_crawl($project,$url,$revisit_after=0){$r=self::memory_row($project,$url);if(!$r)return true;if(!$r['last_crawled_at'])return true;if($revisit_after<=0)return false;return empty($r['next_crawl_at'])||strtotime($r['next_crawl_at'])<=time();}
+ public static function project_metrics($project){global $wpdb;$t=self::tables();return ['jobs'=>(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['jobs']} WHERE project_id=%s",$project)),'urls'=>(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['memory']} WHERE project_id=%s",$project)),'crawled_urls'=>(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['memory']} WHERE project_id=%s AND last_crawled_at IS NOT NULL",$project)),'domains'=>(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(DISTINCT normalized_domain) FROM {$t['memory']} WHERE project_id=%s",$project))];}
+ public static function checkpoint($job,$current_url=''){global $wpdb;$t=self::tables();$wpdb->update($t['jobs'],['updated_at'=>self::now()],['id'=>$job]);}
  public static function add_candidate($job,$url,$source,$parent='',$priority=100,$confidence=1,$depth=0){
   global $wpdb;$t=self::tables();$n=Numpo_Crawler::normalize_url($url);if(!$n)return false;
   $parts=wp_parse_url($n);if(empty($parts['host']))return false;$host=strtolower($parts['host']);
