@@ -7,6 +7,11 @@ class Numpo_Diagnostics {
  }
  public static function check(){
   $checks=[];
+  $engine=trailingslashit(NUMPO_DIR).'engine/numpo-engine';
+  $engine_file=is_file($engine);
+  $engine_exec=$engine_file && is_executable($engine);
+  $engine_dir=is_dir(trailingslashit(NUMPO_DIR).'engine');
+
   $checks['os']=[
    'label'=>'Linux',
    'ok'=>stripos(PHP_OS_FAMILY,'Linux')===0,
@@ -26,19 +31,42 @@ class Numpo_Diagnostics {
    'value'=>function_exists('exec')?'enabled':'disabled',
    'required'=>true
   ];
+  $engine_value='missing';
+  if($engine_file){
+   if(!$engine_exec){
+    $engine_value='present, not executable';
+   }else{
+    $engine_value='present, executable';
+   }
+  }elseif($engine_dir){
+   $engine_value='engine directory present, binary missing';
+  }elseif(!is_dir(NUMPO_DIR)){
+   $engine_value='plugin directory missing';
+  }
   $checks['engine']=[
    'label'=>'Bundled Go engine',
-   'ok'=>is_file(trailingslashit(NUMPO_DIR).'engine/numpo-engine') && is_executable(trailingslashit(NUMPO_DIR).'engine/numpo-engine'),
-   'value'=>is_file(trailingslashit(NUMPO_DIR).'engine/numpo-engine')?'present':'missing',
+   'ok'=>$engine_file && $engine_exec,
+   'value'=>$engine_value,
    'required'=>true
   ];
+  $checks['engine_path']=[
+   'label'=>'Engine path',
+   'ok'=>$engine_file,
+   'value'=>$engine,
+   'required'=>false
+  ];
+
   $cache=trailingslashit(NUMPO_DIR).'engine/postgres-cache';
+  $cache_dir=is_dir($cache);
+  $cache_items=$cache_dir ? glob($cache.'/*') : false;
+  $cache_ready=$cache_dir && is_array($cache_items) && count($cache_items)>0;
   $checks['postgres']=[
    'label'=>'Bundled PostgreSQL runtime',
-   'ok'=>is_dir($cache) && count((array)glob($cache.'/*'))>0,
-   'value'=>is_dir($cache)?'present':'missing',
+   'ok'=>$cache_ready,
+   'value'=>$cache_ready?'present':($cache_dir?'directory empty or unreadable':'missing'),
    'required'=>true
   ];
+
   $browser=self::find_browser();
   $checks['chromium']=[
    'label'=>'Chromium',
@@ -46,6 +74,7 @@ class Numpo_Diagnostics {
    'value'=>$browser??'not found',
    'required'=>false
   ];
+
   $required_ok=true;
   foreach($checks as $c) if($c['required']&&!$c['ok']) $required_ok=false;
   return ['ok'=>$required_ok,'checks'=>$checks];
