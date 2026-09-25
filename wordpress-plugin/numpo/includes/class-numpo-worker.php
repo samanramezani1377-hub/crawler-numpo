@@ -5,7 +5,7 @@ class Numpo_Worker {
   add_filter('cron_schedules',[__CLASS__,'cron_schedules']);
   add_action('numpo_process_job',[__CLASS__,'process']);
   add_action('numpo_recover_jobs',[__CLASS__,'recover']);
-  if(!wp_next_scheduled('numpo_recover_jobs'))wp_schedule_event(time()+60,'numpo_five_minutes','numpo_recover_jobs');
+  if(!get_option('numpo_recover_schedule_v2')){ $old=wp_next_scheduled('numpo_recover_jobs'); if($old)wp_unschedule_event($old,'numpo_recover_jobs'); wp_schedule_event(time()+60,'numpo_five_minutes','numpo_recover_jobs'); update_option('numpo_recover_schedule_v2','1',false); } elseif(!wp_next_scheduled('numpo_recover_jobs'))wp_schedule_event(time()+60,'numpo_five_minutes','numpo_recover_jobs');
  }
  public static function cron_schedules($schedules){
   if(!isset($schedules['numpo_five_minutes']))$schedules['numpo_five_minutes']=['interval'=>300,'display'=>'Numpo every 5 minutes'];
