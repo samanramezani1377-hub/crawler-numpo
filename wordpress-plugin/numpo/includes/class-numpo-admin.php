@@ -72,17 +72,119 @@ class Numpo_Admin {
  <script>
 (function(){
  const root=document.getElementById('numpo-dashboard'), form=document.getElementById('numpo-form');
- function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
- function caps(f){const out={};['active_probe','deep_crawl','link_discovery','sitemap','robots','subdomain_from_crawl','wordpress','woocommerce','phone','email','business','social','page_classification'].forEach(k=>out[k]=f.has('cap_'+k));return out;}
- async function api(path,opts={}){const r=await fetch(ajaxurl,{...opts,headers:{'Content-Type':'application/x-www-form-urlencoded',...(opts.headers||{})},body:new URLSearchParams({action:'numpo_admin_proxy',nonce:'<?php echo esc_js(wp_create_nonce('numpo_admin')); ?>',path,...(opts.body||{})})});const text=await r.text();try{return JSON.parse(text);}catch(e){return {success:false,data:'Invalid JSON from WordPress AJAX (HTTP '+r.status+'): '+text.slice(0,500)}}}
- async function load(id){
-  const data=await api('/jobs/'+encodeURIComponent(id)); if(!data.success)return;
-  const j=data.data; root.innerHTML='<div class="postbox" style="padding:16px"><h2>Job '+esc(j.job_id||id)+'</h2><p>Status: <strong>'+esc(j.status)+'</strong> · Candidates: '+esc(j.candidate_count||0)+' · Probes: '+esc(j.probe_count||0)+'</p><p><button class="button" id="numpo-cancel">Cancel</button> <a class="button" href="'+ajaxurl+'?action=numpo_admin_export&nonce=<?php echo esc_js(wp_create_nonce('numpo_admin')); ?>&job_id='+encodeURIComponent(id)+'">Export CSV</a></p></div>';
-  document.getElementById('numpo-cancel').onclick=async()=>{await api('/jobs/'+encodeURIComponent(id)+'/cancel',{method:'POST'});load(id);};
-  const resources=['candidates','domains','pages','technologies','contacts','business','social','classifications','probes'];
-  for(const res of resources){const d=await api('/jobs/'+encodeURIComponent(id)+'/'+res);if(!d.success)continue;const items=d.data.items||[];const keys=items.length?Object.keys(items[0]).slice(0,7):[];root.innerHTML+='<div class="postbox" style="padding:12px"><h3>'+esc(res)+' ('+esc(d.data.total||items.length)+')</h3>'+(items.length?'<div style="overflow:auto"><table class="widefat striped"><thead><tr>'+keys.map(k=>'<th>'+esc(k)+'</th>').join('')+'</tr></thead><tbody>'+items.slice(0,20).map(x=>'<tr>'+keys.map(k=>'<td>'+esc(typeof x[k]==='object'?JSON.stringify(x[k]):x[k]))+'</td>').join('')+'</tr></tbody></table></div>':'<p>No data.</p>')+'</div>';}
+ const restBase=<?php echo wp_json_encode(trailingslashit(rest_url('numpo/v1'))); ?>;
+ const restNonce=<?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>;
+ let activeJobId=null;
+
+ function esc(v){
+  return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
  }
- form.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(form),seeds=f.get('seeds').split(/\r?\n/).map(x=>x.trim()).filter(Boolean),sources={search_provider:f.has('source_search'),sitemap:f.has('source_sitemap'),robots:f.has('source_robots'),link_discovery:f.has('source_links'),subdomain_from_crawl:f.has('source_subdomains')},target={};const country=f.get('target_country');if(country)target.countries=[country];const limits={max_pages:+f.get('max_pages'),max_urls:+f.get('max_urls'),max_depth:+f.get('max_depth'),max_candidates_per_page:+f.get('max_candidates_per_page')};const body={project_id:f.get('project_id'),mode:f.get('mode'),seeds:JSON.stringify(seeds),sources:JSON.stringify(sources),target:JSON.stringify(target),limits:JSON.stringify(limits),capabilities:JSON.stringify(caps(f))};const r=await api('/jobs',{method:'POST',body});if(r.success){load(r.data.job_id);}else{root.innerHTML='<div class="notice notice-error"><p>'+esc(r.data||'Request failed')+'</p></div>';}});document.getElementById('numpo-refresh').onclick=()=>{const h=document.querySelector('#numpo-dashboard h2');if(h)load(h.textContent.replace(/^Job /,''));};
+ function caps(f){
+  const out={};
+  ['active_probe','deep_crawl','link_discovery','sitemap','robots','subdomain_from_crawl','wordpress','woocommerce','phone','email','business','social','page_classification']
+   .forEach(k=>out[k]=f.has('cap_'+k));
+  return out;
+ }
+ async function parseResponse(response){
+  const text=await response.text();
+  if(!text){
+   throw new Error('پاسخ خالی از WordPress دریافت شد (HTTP '+response.status+').');
+  }
+  try{
+   const data=JSON.parse(text);
+   if(!response.ok){
+    const message=data?.message || data?.data?.message || data?.code || ('HTTP '+response.status);
+    throw new Error(message);
+   }
+   return data;
+  }catch(e){
+   if(e instanceof SyntaxError){
+    throw new Error('پاسخ WordPress JSON معتبر نبود (HTTP '+response.status+').');
+   }
+   throw e;
+  }
+ }
+ async function api(path,options={}){
+  const opts={...options,credentials:'same-origin',headers:{'Accept':'application/json','X-WP-Nonce':restNonce,...(options.headers||{})}};
+  if(opts.body!==undefined && opts.body!==null && typeof opts.body!=='string'){
+   opts.headers['Content-Type']='application/json';
+   opts.body=JSON.stringify(opts.body);
+  }
+  const response=await fetch(restBase+String(path).replace(/^\//,''),opts);
+  return parseResponse(response);
+ }
+ function showError(error){
+  root.innerHTML='<div class="notice notice-error"><p>'+esc(error?.message||String(error)||'Request failed')+'</p></div>';
+ }
+ async function load(id){
+  activeJobId=id;
+  try{
+   const j=await api('/jobs/'+encodeURIComponent(id));
+   root.innerHTML='<div class="postbox" style="padding:16px"><h2>Job '+esc(j.job_id||id)+'</h2><p>Status: <strong>'+esc(j.status)+'</strong> · Candidates: '+esc(j.candidate_count||0)+' · Probes: '+esc(j.probe_count||0)+'</p><p><button class="button" id="numpo-cancel">Cancel</button> <a class="button" href="<?php echo esc_url(admin_url('admin-ajax.php')); ?>?action=numpo_admin_export&nonce=<?php echo esc_js(wp_create_nonce('numpo_admin')); ?>&job_id='+encodeURIComponent(id)+'">Export CSV</a></p></div>';
+   document.getElementById('numpo-cancel').onclick=async()=>{
+    try{await api('/jobs/'+encodeURIComponent(id)+'/cancel',{method:'POST'});await load(id);}
+    catch(e){showError(e);}
+   };
+   const resources=['candidates','domains','pages','technologies','contacts','business','social','classifications','probes'];
+   for(const res of resources){
+    try{
+     const d=await api('/jobs/'+encodeURIComponent(id)+'/'+res);
+     const items=d.items||[];
+     const keys=items.length?Object.keys(items[0]).slice(0,7):[];
+     root.innerHTML+='<div class="postbox" style="padding:12px"><h3>'+esc(res)+' ('+esc(d.total||items.length)+')</h3>'+
+      (items.length?'<div style="overflow:auto"><table class="widefat striped"><thead><tr>'+keys.map(k=>'<th>'+esc(k)+'</th>').join('')+'</tr></thead><tbody>'+
+      items.slice(0,20).map(x=>'<tr>'+keys.map(k=>'<td>'+esc(typeof x[k]==='object'?JSON.stringify(x[k]):x[k])+'</td>').join('')+'</tr>').join('')+
+      '</tbody></table></div>':'<p>No data.</p>')+'</div>';
+    }catch(e){
+     root.innerHTML+='<div class="notice notice-warning"><p>'+esc(res+': '+(e.message||e))+'</p></div>';
+    }
+   }
+  }catch(e){showError(e);}
+ }
+ form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const button=form.querySelector('button[type="submit"], button:not([type])');
+  const oldText=button?button.textContent:'';
+  if(button){button.disabled=true;button.textContent='Starting…';}
+  try{
+   const f=new FormData(form);
+   const seeds=String(f.get('seeds')||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+   const sources={
+    search_provider:f.has('source_search'),
+    sitemap:f.has('source_sitemap'),
+    robots:f.has('source_robots'),
+    link_discovery:f.has('source_links'),
+    subdomain_from_crawl:f.has('source_subdomains')
+   };
+   const target={};
+   const country=f.get('target_country');
+   if(country)target.countries=[country];
+   const limits={
+    max_pages:Number(f.get('max_pages')),
+    max_urls:Number(f.get('max_urls')),
+    max_depth:Number(f.get('max_depth')),
+    max_candidates_per_page:Number(f.get('max_candidates_per_page'))
+   };
+   const body={
+    project_id:String(f.get('project_id')||''),
+    mode:String(f.get('mode')||'manual'),
+    seeds,
+    sources,
+    target,
+    limits,
+    capabilities:caps(f)
+   };
+   const result=await api('/jobs',{method:'POST',body});
+   if(!result || !result.job_id) throw new Error('Engine job ID در پاسخ ایجاد Job وجود ندارد.');
+   await load(result.job_id);
+  }catch(e){showError(e);}
+  finally{
+   if(button){button.disabled=false;button.textContent=oldText;}
+  }
+ });
+ document.getElementById('numpo-refresh').onclick=()=>{
+  if(activeJobId)load(activeJobId);
+ };
 })();
  </script><?php }
  public static function settings(){if(!current_user_can('manage_options'))return;?>
