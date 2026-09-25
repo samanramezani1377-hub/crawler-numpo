@@ -5,7 +5,7 @@ class Numpo_Discovery {
   $base=Numpo_Crawler::normalize_url($seed);if(!$base)return;
   $host=wp_parse_url($base,PHP_URL_HOST);if(!$host)return;
   $origin=Numpo_Crawler::normalize_url((wp_parse_url($base,PHP_URL_SCHEME)?:'https').'://'.$host.'/');
-  $urls=[$origin.'/robots.txt',''.$origin.'/sitemap.xml'];
+  $urls=[$origin.'robots.txt',$origin.'sitemap.xml',$origin.'sitemap_index.xml'];
   foreach($urls as $url){
    $r=Numpo_Crawler::fetch($url,10,524288);if(is_wp_error($r))continue;
    $domain=Numpo_DB::ensure_domain($project,Numpo_Crawler::domain($host));
