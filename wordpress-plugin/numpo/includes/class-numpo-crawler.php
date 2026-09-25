@@ -99,6 +99,11 @@ class Numpo_Crawler {
   if(preg_match('#<meta[^>]+property=["\\\']og:title["\\\'][^>]+content=["\\\'](.*?)["\\\']#is',$body,$m)&&trim($m[1])!=='')$out[]=['brand',trim(html_entity_decode($m[1],ENT_QUOTES,'UTF-8'))];
   return $out;
  }
+ public static function headers($response){
+  $out=[];$headers=wp_remote_retrieve_headers($response);
+  foreach(['server','x-powered-by','via','cf-ray','x-cache','x-cache-hits'] as $name){$v=(string)$headers->get($name);if($v!=='')$out[]=[$name,$v];}
+  return $out;
+ }
  public static function contacts($body){
   $out=[];$seen=[];preg_match_all('/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i',$body,$emails);
   foreach($emails[0]??[] as $v){$v=strtolower($v);if(empty($seen['e'.$v])){$seen['e'.$v]=1;$out[]=['email',$v,$v];}}
