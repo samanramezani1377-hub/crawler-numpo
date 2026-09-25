@@ -19,6 +19,7 @@ class Numpo_Worker {
   Numpo_DB::increment_job($job,'processed_urls');
   $domain_id=Numpo_DB::ensure_domain($row['project_id'],$candidate['normalized_domain']);
   Numpo_DB::add_page($domain_id,$result['url'],$result['status'],$result['title'],$result['content_type'],$candidate['depth']);
+  $probe=Numpo_Crawler::probe($candidate['normalized_host'],(int)($cfg['request_timeout']??10));Numpo_DB::add_fact($job,$domain_id,'probe','status',$probe['status'],$probe['status'],$result['url'],.9,'host probe');Numpo_DB::add_fact($job,$domain_id,'probe','http_status',(string)$probe['http_status'],(string)$probe['http_status'],$result['url'],.9,'host probe');Numpo_DB::add_fact($job,$domain_id,'probe','https_status',(string)$probe['https_status'],(string)$probe['https_status'],$result['url'],.9,'host probe');
   foreach($result['headers']??[] as $h)Numpo_DB::add_fact($job,$domain_id,'http_header',$h[0],$h[1],$h[1],$result['url'],.7,'response-header');
   foreach(Numpo_Crawler::technologies($result['body'],$result['url']) as $tech)Numpo_DB::add_technology($domain_id,$tech[0],$tech[1],[$tech[2]],$result['url']);
   foreach(Numpo_Crawler::metadata($result['body']) as $meta)Numpo_DB::add_fact($job,$domain_id,'metadata',$meta[0],$meta[1],$meta[1],$result['url'],.8,'html-meta');
