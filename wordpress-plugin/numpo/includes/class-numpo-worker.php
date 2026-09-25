@@ -9,7 +9,9 @@ class Numpo_Worker {
  public static function process($job){
   $row=Numpo_DB::get_job($job);if(!$row)return;
   if(in_array($row['status'],['cancelled','completed','failed'],true))return;
+  if($row['status']==='paused')return;
   Numpo_DB::set_job_status($job,'running');
+  $row=Numpo_DB::get_job($job);if(!$row||$row['status']==='paused'||$row['status']==='cancelled')return;
   $candidate=Numpo_DB::next_candidate($job);
   if(!$candidate){Numpo_DB::set_job_status($job,'completed');return;}
   if(!Numpo_DB::mark_processing($candidate['id'])){self::schedule($job);return;}
