@@ -21,7 +21,7 @@ class Numpo_Crawler {
  private static function private_host($host){
   if(filter_var($host,FILTER_VALIDATE_IP)){return self::private_ip($host);}
   if(in_array($host,['localhost','localhost.localdomain'],true)||substr($host,-6)==='.local'||substr($host,-10)==='.localhost')return true;
-  $ips=@gethostbynamel($host);if(is_array($ips)){foreach($ips as $ip)if(self::private_ip($ip))return true;}return false;
+  if(filter_var($host,FILTER_VALIDATE_IP,FILTER_FLAG_IPV6))return self::private_ip($host);\n  $ips=@gethostbynamel($host);if(is_array($ips)){foreach($ips as $ip)if(self::private_ip($ip))return true;}\n  if(function_exists('dns_get_record')){foreach((array)@dns_get_record($host,DNS_AAAA) as $r){if(!empty($r['ipv6'])&&self::private_ip($r['ipv6']))return true;}}\n  return false;
  }
  private static function private_ip($ip){
   if(!filter_var($ip,FILTER_VALIDATE_IP))return true;
