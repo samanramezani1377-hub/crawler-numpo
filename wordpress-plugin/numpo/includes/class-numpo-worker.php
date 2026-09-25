@@ -8,17 +8,28 @@ class Numpo_Worker {
   add_action('numpo_bootstrap_job',[__CLASS__,'bootstrap_job']);
   add_action('numpo_discover_seed',[__CLASS__,'discover_seed']);
   if(!get_option('numpo_recover_schedule_v2')){ $old=wp_next_scheduled('numpo_recover_jobs'); if($old)wp_unschedule_event($old,'numpo_recover_jobs'); wp_schedule_event(time()+60,'numpo_five_minutes','numpo_recover_jobs'); update_option('numpo_recover_schedule_v2','1',false); } elseif(!wp_next_scheduled('numpo_recover_jobs'))wp_schedule_event(time()+60,'numpo_five_minutes','numpo_recover_jobs');
+  if(!wp_next_scheduled('numpo_worker_tick'))wp_schedule_event(time()+60,'numpo_one_minute','numpo_worker_tick');
  }
  public static function cron_schedules($schedules){
   if(!isset($schedules['numpo_five_minutes']))$schedules['numpo_five_minutes']=['interval'=>300,'display'=>'Numpo every 5 minutes'];
+  if(!isset($schedules['numpo_one_minute']))$schedules['numpo_one_minute']=['interval'=>60,'display'=>'Numpo every minute'];
   return $schedules;
  }
  public static function schedule($job){
   $row=Numpo_DB::get_job($job);
   if(!$row||in_array($row['status'],['paused','cancelled','completed','failed'],true))return false;
-  if(!wp_next_scheduled('numpo_process_job',[$job]))return wp_schedule_single_event(time()+3,'numpo_process_job',[$job]);
-  return true;
-}
+  if(wp_next_scheduled('numpo_process_job',[$job]))return true;
+  $result=wp_schedule_single_event(time()+2,'numpo_process_job',[$job],true);
+  if($result===true)return true;
+  if(is_wp_error($result)&&$result->get_error_code()==='duplicate_event')return true;
+  Numpo_DB::record_error($job,'worker','schedule_failed',is_wp_error($result)?$result->get_error_message():'Could not schedule worker.',false);
+  return false;
+ }
+ public static function tick(){
+  global $wpdb;$t=Numpo_DB::tables();
+  $jobs=$wpdb->get_col("SELECT id FROM {$t['jobs']} WHERE status IN ('queued','running') ORDER BY updated_at ASC LIMIT 20");
+  foreach($jobs as $job)self::schedule($job);
+ }
  public static function bootstrap_job($job,$project,$seeds=[],$config=[]){
   $row=Numpo_DB::get_job($job);if(!$row||in_array($row['status'],['cancelled','failed','completed'],true))return;
   $seeds=is_array($seeds)?$seeds:[];$config=is_array($config)?$config:[];
@@ -27,12 +38,18 @@ class Numpo_Worker {
     Numpo_DB::record_error($job,'discovery','invalid_seed','Invalid seed: '.(string)$seed,false);
     Numpo_DB::set_job_status($job,'failed');return;
    }
-   wp_schedule_single_event(time()+1,'numpo_discover_seed',[$job,$project,(string)$seed,$config]);
+  }
+  foreach($seeds as $seed){
+   $result=wp_schedule_single_event(time()+1,'numpo_discover_seed',[$job,$project,(string)$seed,$config],true);
+   if($result!==true && !(is_wp_error($result)&&$result->get_error_code()==='duplicate_event')){
+    Numpo_DB::record_error($job,'discovery','schedule_failed',is_wp_error($result)?$result->get_error_message():'Could not schedule discovery.',false);
+    Numpo_DB::set_job_status($job,'failed');return;
+   }
   }
   self::schedule($job);
  }
  public static function discover_seed($job,$project,$seed,$config=[]){
-  $row=Numpo_DB::get_job($job);if(!$row||in_array($row['status'],['cancelled','failed'],true))return;
+  $row=Numpo_DB::get_job($job);if(!$row||in_array($row['status'],['paused','cancelled','failed'],true))return;
   Numpo_Discovery::seed_job($job,$project,$seed,is_array($config)?$config:[]);
   self::schedule($job);
  }
