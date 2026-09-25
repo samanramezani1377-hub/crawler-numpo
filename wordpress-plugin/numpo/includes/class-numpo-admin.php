@@ -179,33 +179,23 @@ class Numpo_Admin {
  </script><?php }
  public static function settings(){if(!current_user_can('manage_options'))return;?>
  <div class="wrap" id="numpo-app"><h1>Numpo Settings</h1>
-  <?php $diag=Numpo_Diagnostics::check(); ?>
-  <div class="postbox" style="padding:16px;max-width:1100px"><h2>Runtime diagnostics</h2>
-   <p><strong><?php echo $diag['ok']?'Ready':'Blocked'; ?></strong></p>
-   <table class="widefat striped"><thead><tr><th>Component</th><th>Status</th><th>Value</th></tr></thead><tbody>
-   <?php foreach($diag['checks'] as $check): ?><tr><td><?php echo esc_html($check['label']); ?></td><td><?php echo $check['ok']?'OK':($check['required']?'Required':'Optional'); ?></td><td><?php echo esc_html($check['value']); ?></td></tr><?php endforeach; ?>
-   </tbody></table>
-   <p class="description">Linux amd64, PHP exec(), bundled engine and bundled PostgreSQL are required for bundled mode. Chromium is optional and is only required for browser rendering.</p>
-  </div><form method="post" action="<?php echo esc_url(admin_url('admin-post.php'));?>"><?php wp_nonce_field('numpo_save');?><input type="hidden" name="action" value="numpo_save">
-  <h2>Engine runtime</h2><table class="form-table">
-   <tr><th>Engine mode</th><td><select name="runtime_mode"><option value="bundled" <?php selected(Numpo_Settings::runtime_mode(),'bundled');?>>Bundled (recommended)</option><option value="external" <?php selected(Numpo_Settings::runtime_mode(),'external');?>>External</option></select><p class="description">Bundled runs the Go engine and its PostgreSQL runtime from this plugin package. External keeps the same API contract for a separately managed engine.</p></td></tr>
-   <tr><th>Engine URL</th><td><input class="regular-text" name="engine_url" value="<?php echo esc_attr(Numpo_Settings::engine_url());?>" placeholder="http://127.0.0.1:8080"><p class="description">Base URL of the Go engine.</p></td></tr>
-   <tr><th>Browser binary</th><td><input class="regular-text" name="browser_binary" value="<?php echo esc_attr(Numpo_Settings::browser_binary());?>" placeholder="/usr/bin/chromium"><p class="description">Optional. Leave empty to auto-detect Chromium/Chrome. Only needed for browser rendering.</p></td></tr>
-   <tr><th>API Key</th><td><input type="password" class="regular-text" name="api_key" value="<?php echo esc_attr(Numpo_Settings::api_key());?>"><p class="description">Used as Bearer authentication.</p></td></tr>
-  </table>
-  <h2>Discovery defaults</h2><table class="form-table">
-   <tr><th>Default project</th><td><input class="regular-text" name="default_project" value="<?php echo esc_attr(Numpo_Settings::default_project());?>"></td></tr>
-   <tr><th>Search provider template</th><td><input class="large-text" name="search_url_template" value="<?php echo esc_attr(Numpo_Settings::search_url_template());?>" placeholder="https://provider.example/search?q={query}"><p class="description">The engine replaces {query} and accepts newline-separated HTTP(S) URLs from the provider.</p></td></tr>
-  </table>
-  <h2>Safety & crawl limits</h2><table class="form-table">
-   <tr><th>Limits</th><td>Max pages <input type="number" min="1" name="max_pages" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_pages',100));?>"> &nbsp; Max URLs <input type="number" min="1" name="max_urls" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_urls',500));?>"> &nbsp; Max depth <input type="number" min="0" name="max_depth" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_depth',3));?>"> &nbsp; Candidates/page <input type="number" min="1" name="max_candidates_per_page" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_candidates_per_page',50));?>"></td></tr>
-   <tr><th>Rate limit</th><td><input type="number" min="1" name="domain_rate_limit_ms" value="<?php echo esc_attr(Numpo_Settings::int('numpo_domain_rate_limit_ms',250));?>"> ms per domain</td></tr>
-   <tr><th>Probe cache TTL</th><td><input type="number" min="1" name="probe_ttl_seconds" value="<?php echo esc_attr(Numpo_Settings::int('numpo_probe_ttl_seconds',3600));?>"> seconds</td></tr>
-   <tr><th>Scope</th><td><label><input type="checkbox" name="allow_subdomains" value="1" <?php checked(Numpo_Settings::bool('allow_subdomains',false),true);?>> Allow subdomains</label><br><label><input type="checkbox" name="allow_external_links" value="1" <?php checked(Numpo_Settings::bool('allow_external_links',false),true);?>> Allow external links</label></td></tr>
-  </table>
-  <h2>Default capabilities</h2><div class="numpo-checks"><?php echo self::capChecks();?></div>
-  <p><button class="button button-primary">Save settings</button></p>
- </form></div><?php }
+ <?php $diag=Numpo_Diagnostics::check(); ?>
+ <div class="postbox" style="padding:16px;max-width:1100px"><h2>PHP Runtime</h2><p><strong><?php echo $diag['ok']?'Ready':'Blocked'; ?></strong></p>
+ <table class="widefat striped"><thead><tr><th>Component</th><th>Status</th><th>Value</th></tr></thead><tbody>
+ <?php foreach($diag['checks'] as $check): ?><tr><td><?php echo esc_html($check['label']); ?></td><td><?php echo $check['ok']?'OK':($check['required']?'Required':'Optional'); ?></td><td><?php echo esc_html($check['value']); ?></td></tr><?php endforeach; ?>
+ </tbody></table><p class="description">Numpo PHP-only است و برای crawl به Go Engine، Chromium یا PostgreSQL داخلی نیاز ندارد.</p></div>
+ <form method="post" action="<?php echo esc_url(admin_url('admin-post.php'));?>"><?php wp_nonce_field('numpo_save');?><input type="hidden" name="action" value="numpo_save">
+ <h2>Discovery defaults</h2><table class="form-table">
+ <tr><th>Default project</th><td><input class="regular-text" name="default_project" value="<?php echo esc_attr(Numpo_Settings::default_project());?>"></td></tr>
+ <tr><th>Search provider template</th><td><input class="large-text" name="search_url_template" value="<?php echo esc_attr(Numpo_Settings::search_url_template());?>" placeholder="https://provider.example/search?q={query}"></td></tr>
+ </table>
+ <h2>Safety & crawl limits</h2><table class="form-table">
+ <tr><th>Limits</th><td>Max pages <input type="number" min="1" name="max_pages" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_pages',100));?>"> &nbsp; Max URLs <input type="number" min="1" name="max_urls" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_urls',500));?>"> &nbsp; Max depth <input type="number" min="0" name="max_depth" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_depth',3));?>"> &nbsp; Candidates/page <input type="number" min="1" name="max_candidates_per_page" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_candidates_per_page',50));?>"></td></tr>
+ <tr><th>Rate limit</th><td><input type="number" min="0" name="domain_rate_limit_ms" value="<?php echo esc_attr(Numpo_Settings::int('numpo_domain_rate_limit_ms',250,0));?>"> ms per domain</td></tr>
+ <tr><th>Probe cache TTL</th><td><input type="number" min="1" name="probe_ttl_seconds" value="<?php echo esc_attr(Numpo_Settings::int('numpo_probe_ttl_seconds',3600));?>"> seconds</td></tr>
+ <tr><th>Scope</th><td><label><input type="checkbox" name="allow_subdomains" value="1" <?php checked(Numpo_Settings::bool('allow_subdomains',false),true);?>> Allow subdomains</label><br><label><input type="checkbox" name="allow_external_links" value="1" <?php checked(Numpo_Settings::bool('allow_external_links',false),true);?>> Allow external links</label></td></tr>
+ </table><h2>Default capabilities</h2><div class="numpo-checks"><?php echo self::capChecks();?></div>
+ <p><button class="button button-primary">Save settings</button></p></form></div><?php }
  public static function save(){
   if(!current_user_can('manage_options')||!check_admin_referer('numpo_save'))wp_die('Forbidden');
   update_option('numpo_runtime_mode',in_array($_POST['runtime_mode']??'bundled',['bundled','external'],true)?sanitize_text_field(wp_unslash($_POST['runtime_mode'])):'bundled');
