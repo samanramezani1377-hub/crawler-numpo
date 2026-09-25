@@ -27,11 +27,24 @@ class Numpo_Crawler {
   if(!filter_var($ip,FILTER_VALIDATE_IP))return true;
   return !filter_var($ip,FILTER_VALIDATE_IP,FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE);
  }
- public static function fetch($url,$timeout=15,$max_bytes=2097152){
+ public static function robots_allowed($url){
+  $p=wp_parse_url($url);$host=strtolower((string)($p['host']??''));$scheme=strtolower((string)($p['scheme']??'https'));if($host==='')return false;
+  $key='numpo_robots_'.md5($scheme.'://'.$host);$txt=get_transient($key);
+  if($txt===false){$r=wp_safe_remote_get($scheme.'://'.$host.'/robots.txt',['timeout'=>8,'redirection'=>2,'limit_response_size'=>262144,'user-agent'=>'Numpo PHP Crawler/1.0']);if(is_wp_error($r)){set_transient($key,['allow'=>true],300);return true;}$code=(int)wp_remote_retrieve_response_code($r);$txt=$code>=400?'':(string)wp_remote_retrieve_body($r);set_transient($key,$txt,3600);}
+  if($txt==='')return true;
+  $path=(string)($p['path']??'/');$ua=false;$groups=[];$current=[];$active=false;
+  foreach(preg_split('/\\r?\\n/',$txt) as $line){$line=trim(preg_replace('/#.*$/','',$line));if($line==='')continue;$parts=explode(':',$line,2);if(count($parts)!==2)continue;$k=strtolower(trim($parts[0]));$v=trim($parts[1]);if($k==='user-agent'){$active=(strtolower($v)==='*'||stripos($v,'Numpo')!==false);$groups=[];continue;}if($active&&$k==='disallow'&&$v!=='')$groups[]=$v;}
+  foreach($groups as $rule){if($rule==='/'||strpos($path,$rule)===0)return false;}return true;
+ }
+ public static function rate_limit($url,$delay_ms=250){
+  if($delay_ms<=0)return; $p=wp_parse_url($url);$host=strtolower((string)($p['host']??''));if($host==='')return;
+  $key='numpo_rate_'.md5($host);$last=(float)get_transient($key);$now=microtime(true);$wait=($delay_ms/1000)-($now-$last);if($wait>0)usleep((int)($wait*1000000));set_transient($key,microtime(true),60);
+ }
+ public static function fetch($url,$timeout=15,$max_bytes=2097152,$options=[]){\n  $delay=max(0,(int)($options['rate_limit_ms']??250));if(!empty($options['respect_robots'])&&!self::robots_allowed($url))return new WP_Error('robots_blocked','URL is disallowed by robots.txt.');
   $url=self::normalize_url($url);if(!$url)return new WP_Error('ssrf_blocked','URL is invalid or resolves to a private/local address.');
   $current=$url;$response=null;
   for($hop=0;$hop<=3;$hop++){
-   $response=wp_safe_remote_get($current,['timeout'=>max(1,$timeout),'redirection'=>0,'limit_response_size'=>max(1024,$max_bytes),'user-agent'=>'Numpo PHP Crawler/1.0','headers'=>['Accept'=>'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8']]);
+   self::rate_limit($current,$delay);$response=wp_safe_remote_get($current,['timeout'=>max(1,$timeout),'redirection'=>0,'limit_response_size'=>max(1024,$max_bytes),'user-agent'=>'Numpo PHP Crawler/1.0','headers'=>['Accept'=>'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8']]);
    if(is_wp_error($response))return $response;
    $status=(int)wp_remote_retrieve_response_code($response);
    if($status>=300&&$status<400){
