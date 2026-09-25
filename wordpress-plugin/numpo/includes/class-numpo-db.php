@@ -109,7 +109,7 @@ class Numpo_DB {
  }
  public static function mark_processing($id){
   global $wpdb;$t=self::tables();
-  return $wpdb->query($wpdb->prepare("UPDATE {$t['candidates']} SET status='processing',attempt_count=attempt_count+1,processing_started_at=UTC_TIMESTAMP() WHERE id=%s AND status IN ('new','failed_retryable')",$id))>0;
+  return $wpdb->query($wpdb->prepare("UPDATE {$t['candidates']} SET status='processing',attempt_count=attempt_count+1,processing_started_at=UTC_TIMESTAMP(),next_attempt_at=NULL WHERE id=%s AND (status IN ('new','failed_retryable') OR (status='processing' AND processing_started_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 MINUTE)))",$id))>0;
  }
  public static function finish_candidate($id,$status,$error=''){
   global $wpdb;$t=self::tables();return $wpdb->update($t['candidates'],['status'=>$status,'last_error'=>$error,'completed_at'=>in_array($status,['completed','failed_final'],true)?self::now():null],['id'=>$id])!==false;
@@ -162,6 +162,6 @@ class Numpo_DB {
   return $wpdb->get_results($wpdb->prepare("SELECT category,code,message,retryable,attempt,created_at FROM {$t['errors']} WHERE job_id=%s ORDER BY created_at DESC LIMIT %d OFFSET %d",$job,$limit,$offset),ARRAY_A);
  }
  public static function has_pending($job){
-  global $wpdb;$t=self::tables();return (int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['candidates']} WHERE job_id=%s AND status IN ('new','processing','failed_retryable')",$job))>0;
+  global $wpdb;$t=self::tables();return (int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['candidates']} WHERE job_id=%s AND (status IN ('new','failed_retryable') OR (status='processing' AND processing_started_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 MINUTE)))",$job))>0;
  }
 }
