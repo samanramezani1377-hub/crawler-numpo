@@ -1,162 +1,86 @@
 # کراولر نومپو
 
-نومپو یک سامانهٔ کراول و هوشمندی وب برای کشف اطلاعات عمومی سایت‌ها، تشخیص فناوری‌های استفاده‌شده و استخراج اطلاعات تماس تجاریِ عمومی است.
+Numpo یک افزونه WordPress برای Discovery، Crawl و استخراج اطلاعات عمومی سایت‌هاست.
 
-## معماری
+## معماری PHP-only
 
-معماری Discovery و Crawl از هم جداست. Numpo ابتدا می‌تواند دامنه‌های فعال را با Active Domain Probe غربال کند و سپس Deep Search را فقط روی کاندیدهای مناسب اجرا کند. جزئیات در [معماری Discovery](docs/DISCOVERY.md) آمده است.
-
-~~~text
-پلاگین وردپرس
-      |
-    API نسخه‌بندی‌شده
-      |
-      v
-موتور کراولر Go
-  |    |    |
-صف  دریافت  تشخیص/استخراج
-      |
-      v
- PostgreSQL
-~~~
-
-تصمیم اصلی این پروژه این است که **Go موتور اصلی کراولر** باشد و **WordPress نقش پنل مدیریت و کنترل** را داشته باشد. پلاگین وردپرس فقط از طریق API نسخه‌بندی‌شده با موتور ارتباط دارد و به کد داخلی Go وابسته نیست. بنابراین بعداً می‌توان موتور Go را بدون بازنویسی هستهٔ پلاگین از همان VPS جدا و روی سرور مستقل اجرا کرد.
-
-## مسیر توسعه و استقرار
-
-مرحله ۱:
-
-~~~text
-WordPress -> API محلی -> Go -> پایگاه داده
-~~~
-
-مرحله ۲:
-
-~~~text
-WordPress -> API امن HTTPS -> Go -> پایگاه داده
-~~~
-
-مرحله ۳:
-
-~~~text
-WordPress -> API -> صف -> چند Worker در Go -> PostgreSQL
-~~~
-
-## قابلیت‌های محصول
-
-1. Discovery دامنه‌ها و URLهای کاندید.
-2. بررسی سریع فعال بودن دامنه.
-3. جستجوی عمیق و Crawl هدفمند.
-4. دریافت دامنه‌ها و URLهای اولیه.
-2. کراول محدود و کنترل‌شدهٔ هر دامنه.
-3. اولویت‌دهی به صفحات مهم مانند تماس با ما و درباره ما.
-4. تشخیص فناوری سایت.
-5. استخراج اطلاعات تماس تجاریِ عمومی.
-6. نرمال‌سازی و حذف تکراری شماره‌ها.
-7. نگهداری URL منبع برای هر نتیجه.
-8. ذخیرهٔ ساختاریافتهٔ نتایج.
-9. نمایش وضعیت، خطا، تلاش مجدد و آمار Crawl.
-10. فیلتر و خروجی گرفتن از نتایج.
-
-## فناوری‌های اولیه
-
-- WordPress
-- WooCommerce
-
-تشخیص فناوری مبتنی بر شواهد است و برای هر تشخیص، فناوری، میزان اطمینان، شواهد، URL منبع و زمان تشخیص نگهداری می‌شود.
-
-## روش دریافت صفحات
-
-HTTP غیرهمزمان روش پیش‌فرض است.
-
-اجرای مرورگر بدون رابط گرافیکی فقط زمانی استفاده می‌شود که HTTP معمولی اطلاعات کافی در اختیار قرار ندهد. اجرای مرورگر برای تمام صفحات پیش‌فرض نیست، چون مصرف منابع را به‌شدت افزایش می‌دهد.
-
-## استراتژی کارایی
-
-بار اصلی سیستم شبکه و I/O است؛ بنابراین کنترل همزمانی مهم‌تر از اجرای پردازش سنگین برای هر سایت است.
-
-همزمانی کلی و همزمانی هر دامنه باید جداگانه کنترل شود. Timeout، محدودیت Redirect، تعداد تلاش مجدد محدود و Backoff الزامی هستند.
-
-برای شروع، یک VPS حدود ۴ هستهٔ پردازنده و ۸ گیگابایت RAM نقطهٔ شروع مناسبی است؛ اما ظرفیت واقعی باید با Benchmark اندازه‌گیری شود.
-
-## داده‌ها
-
-موجودیت‌های اصلی:
-
-- پروژه
-- دامنه
-- Job کراول
-- صفحه
-- فناوری
-- اطلاعات تماس
-- خطای Job
-
-مدل دادهٔ کراولر مستقل از جداول وردپرس طراحی می‌شود. PostgreSQL گزینهٔ اصلی برای محیط Production است.
-
-## امنیت و کراول مسئولانه
-
-سیستم برای اطلاعات عمومی سایت‌ها و Crawl کنترل‌شده طراحی می‌شود.
-
-محافظت‌های الزامی:
-
-- HTTPS و احراز هویت سرویس در حالت Remote
-- محافظت در برابر SSRF
-- محدودیت تعداد URL و دامنه
-- محدودیت حجم پاسخ
-- محدودیت درخواست در هر دامنه
-- Timeout و تلاش مجدد محدود
-- محدودهٔ مشخص Crawl
-- بدون دور زدن احراز هویت
-- بدون دور زدن CAPTCHA
-- بدون طراحی برای پنهان‌کاری یا دور زدن محدودیت‌ها
-- بدون تبدیل شدن به Proxy نامحدود
-
-## وضعیت فعلی
-
-هستهٔ MVP و سخت‌سازی Production پیاده‌سازی شده است: پلاگین WordPress کنترل‌پلین، Go Engine، API نسخه‌بندی‌شده، PostgreSQL schema، نرمال‌سازی URL، SSRF policy، Candidate Store با dedup اتمیک، Active Probe، Discovery Providerهای Sitemap/Robots، Search Provider قابل‌تعویض و صفحه‌بندی‌شده، Deep Crawl محدود، تشخیص فناوری و استخراج اطلاعات عمومی در مخزن قرار گرفته‌اند.
-
-Pipeline انتهابه‌انتها، تست بار چند Worker، تست Race، `go vet`، PHPUnit روی WordPress واقعی/MySQL و ساخت ZIP نصب‌شدنی پلاگین در CI اجرا می‌شوند. Browser escalation نیز از یک proxy محلی با SSRF validation عبور می‌کند تا درخواست‌های HTTP/HTTPS مرورگر خارج از policy موتور نتوانند به مقصدهای خصوصی دسترسی پیدا کنند.
-
-در ساختار پروژه فقط `wordpress-plugin/numpo` منبع رسمی پلاگین است و tree قدیمی `numpo/` حذف شده است.
-
-## مستندات
-
-- [معماری](docs/ARCHITECTURE.md)
-- [قرارداد API](docs/API-CONTRACT.md)
-- [مدل داده](docs/DATA-MODEL.md)
-- [نقشه راه](docs/ROADMAP.md)
-
-## Pipeline اصلی
-
-ورودی Discovery می‌تواند دستی، خودکار یا ترکیبی باشد:
+Numpo در شاخه `php-only` کاملاً داخل WordPress/PHP اجرا می‌شود و برای اجرای Crawl به Go Engine، Chromium یا PostgreSQL داخلی وابسته نیست.
 
 ```text
-Manual / CSV ────────┐
-Search / Sitemap ────┤
-Robots / Links ──────┤→ Candidate Store → Active Probe
-Subdomains ──────────┘                         ↓
-                                        Classification
-                                              ↓
-                                           Routing
-                                              ↓
-                                          Deep Crawl
-                                              ↓
-                                         Intelligence
+WordPress
+   │
+   ├── REST API
+   ├── Discovery
+   ├── Queue / Worker
+   ├── HTTP Crawler
+   ├── Detection / Extraction
+   └── MySQL / $wpdb
 ```
 
-در حالت Manual، کاربر فقط لیست دامنه/URL می‌دهد و Search Provider لازم نیست. در حالت Automatic، Numpo خودش Candidate تولید می‌کند. حالت Hybrid هر دو مسیر را روی Candidate Store مشترک ترکیب می‌کند.
+## قابلیت‌ها
 
-Active Probe برای اندازه‌گیری وضعیت شبکه و Signalهای پایه است و دامنه را حذف نمی‌کند. Deep Crawl تحلیل عمیق را انجام می‌دهد. هر دو از Go Crawl Engine و محدودیت‌های امنیتی و Rate Limit مشترک استفاده می‌کنند.
+- Discovery از Seed، robots.txt و Sitemap/Sitemap Index
+- Crawl با محدودیت URL، Page، Depth و Candidate
+- رعایت robots.txt
+- Rate limit برای هر Host
+- Retry و Backoff
+- کنترل Redirect
+- SSRF protection برای IPv4/IPv6 و DNS
+- محدودیت حجم پاسخ
+- تشخیص CMS، Framework، Analytics، CDN/WAF و ابزارهای رایج
+- استخراج Metadata
+- استخراج Social
+- استخراج Business و Contact
+- Page Classification
+- Host Probe
+- ذخیره HTTP response headers
+- REST API
+- CSV Export
+- Job recovery
+- Candidate deduplication و lease برای پردازش
 
-## WordPress bundled runtime
+## امنیت
 
-The installable Numpo WordPress package includes the Go engine, versioned migrations, and a pre-seeded embedded PostgreSQL runtime for the supported Linux package target. WordPress starts the engine on demand while the engine owns PostgreSQL lifecycle and migrations.
+Numpo فقط برای Crawl کنترل‌شدهٔ اطلاعات عمومی طراحی شده است.
 
-Runtime state is kept under the WordPress uploads area rather than inside plugin code, so plugin upgrades do not overwrite the database state. Deactivation stops the engine; uninstall removes the disposable runtime/log state and plugin settings while leaving the database state directory available for explicit administrator cleanup.
+- مقصدهای private/local توسط SSRF policy مسدود می‌شوند.
+- Redirectها دوباره اعتبارسنجی می‌شوند.
+- حجم پاسخ محدود است.
+- تعداد URL و عمق Crawl محدود است.
+- Rate limit قابل تنظیم است.
+- robots.txt قابل رعایت یا غیرفعال‌سازی توسط تنظیم Job است.
+- احراز هویت، CAPTCHA یا محدودیت‌های سایت دور زده نمی‌شوند.
 
-The WordPress settings page exposes two modes:
-- **Bundled**: plugin-managed Go engine + embedded PostgreSQL.
-- **External**: the same API contract can point at a separately managed engine later without changing crawler code.
+## ساختار
 
-The package build is architecture-specific because the bundled PostgreSQL runtime is a native executable dependency. CI builds and validates the installable ZIP rather than committing large binary blobs to Git.
+منبع رسمی افزونه:
 
+`wordpress-plugin/numpo`
+
+اجزای PHP اصلی:
+
+- `class-numpo-api.php`
+- `class-numpo-crawler.php`
+- `class-numpo-db.php`
+- `class-numpo-discovery.php`
+- `class-numpo-worker.php`
+- `class-numpo-diagnostics.php`
+- `class-numpo-admin.php`
+
+## نصب
+
+فایل ZIP ساخته‌شده توسط CI را در WordPress از مسیر Plugins → Add New → Upload Plugin نصب کنید.
+
+پیش‌نیازهای اصلی:
+
+- WordPress
+- PHP 7.4+
+- WordPress HTTP API / cURL
+- DOMDocument
+- MySQL/MariaDB مورد نیاز WordPress
+
+هیچ Go binary یا PostgreSQL داخلی برای اجرای PHP-only مورد نیاز نیست.
+
+## وضعیت
+
+شاخه `php-only` مسیر مهاجرت کامل Numpo از معماری Go/embedded PostgreSQL به اجرای مستقیم PHP در WordPress است. قبل از استفاده Production باید CI، تست End-to-End و نصب واقعی ZIP با موفقیت تأیید شوند.
