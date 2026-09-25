@@ -84,6 +84,10 @@ class Numpo_DB {
   ]);
   return $ok!==false;
  }
+ public static function list_jobs($limit=50){
+  global $wpdb;$t=self::tables();$limit=min(100,max(1,(int)$limit));
+  return $wpdb->get_results($wpdb->prepare("SELECT id AS job_id,project_id,mode,status,max_pages,max_urls,processed_pages,processed_urls,created_at,updated_at,started_at,completed_at,cancelled_at FROM {$t['jobs']} ORDER BY created_at DESC LIMIT %d",$limit),ARRAY_A);
+ }
  public static function get_job($id){
   global $wpdb;$t=self::tables();$row=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['jobs']} WHERE id=%s",$id),ARRAY_A);
   if(!$row)return null;$row['config']=$row['config']?json_decode($row['config'],true):[];
