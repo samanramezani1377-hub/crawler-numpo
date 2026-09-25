@@ -41,7 +41,7 @@ class Numpo_API {
  public static function export_csv($id){
   $job=Numpo_DB::get_job($id);if(!$job)return new WP_Error('not_found','Job not found.',['status'=>404]);
   [$rows,$total]=Numpo_DB::candidates_page($id,500,0);$out=fopen('php://temp','w+');fputcsv($out,['url','normalized_url','domain','source','status','confidence','depth','attempts','error']);
-  foreach($rows as $row)fputcsv($out,[$row['url'],$row['normalized_url'],$row['normalized_domain'],$row['source_type'],$row['status'],$row['confidence'],$row['depth'],$row['attempt_count'],$row['last_error']]);
+  for($offset=0;$offset<$total;$offset+=200){[$rows,]=Numpo_DB::candidates_page($id,200,$offset);foreach($rows as $row)fputcsv($out,[$row['url'],$row['normalized_url'],$row['normalized_domain'],$row['source_type'],$row['status'],$row['confidence'],$row['depth'],$row['attempt_count'],$row['last_error']]);}
   rewind($out);$csv=stream_get_contents($out);fclose($out);return new WP_REST_Response($csv,200);
  }
 }
