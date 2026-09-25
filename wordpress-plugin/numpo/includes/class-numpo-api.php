@@ -8,6 +8,9 @@ class Numpo_API {
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'get']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/candidates',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'candidates']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/cancel',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'cancel']]);
+  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/pause',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'pause']]);
+  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/resume',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'resume']]);
+  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/export/(?P<resource>urls|domains|pages|technologies|contacts|business|social|classifications|probes|errors)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'export_resource']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/(?P<resource>domains|hosts|pages|technologies|contacts|business|social|classifications|probes)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'resource']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/errors',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'errors']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/csv',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'csv']]);
@@ -73,6 +76,10 @@ class Numpo_API {
  public static function get(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']));}
  public static function candidates(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']).'/candidates');}
  public static function cancel(WP_REST_Request $r){return self::call('POST','/discovery/jobs/'.rawurlencode($r['id']).'/cancel');}
+ public static function pause(WP_REST_Request $r){return self::call('POST','/discovery/jobs/'.rawurlencode($r['id']).'/pause');}
+ public static function resume(WP_REST_Request $r){return self::call('POST','/discovery/jobs/'.rawurlencode($r['id']).'/resume');}
+ public static function export_resource(WP_REST_Request $r){$id=rawurlencode($r['id']);$resource=sanitize_key($r['resource']);$url=Numpo_Settings::engine_url().'/api/v1/discovery/jobs/'.$id.'/export/'.$resource;$args=['method'=>'GET','timeout'=>120,'headers'=>['Accept'=>'text/csv']];if($k=Numpo_Settings::api_key())$args['headers']['Authorization']='Bearer '.$k;$res=wp_remote_request($url,$args);if(is_wp_error($res))return $res;$status=(int)wp_remote_retrieve_response_code($res);if($status<200||$status>=300)return new WP_Error('engine_export_error','Engine export failed',['status'=>$status]);return new WP_REST_Response(wp_remote_retrieve_body($res),$status);}
+
  public static function resource(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']).'/'.rawurlencode($r['resource']));}
  public static function errors(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']).'/errors');}
 
