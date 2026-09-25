@@ -4,6 +4,7 @@ class Numpo_API {
  public static function init(){add_action('rest_api_init',[__CLASS__,'routes']);}
  public static function routes(){
   register_rest_route('numpo/v1','/jobs',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'create']]);
+  register_rest_route('numpo/v1','/project/(?P<project>[A-Za-z0-9_-]+)/metrics',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>function($r){return self::ok(Numpo_DB::project_metrics(sanitize_text_field($r['project'])));}]);
   register_rest_route('numpo/v1','/jobs',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'jobs']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'get']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/candidates',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'candidates']]);
