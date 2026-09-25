@@ -79,7 +79,7 @@ class Numpo_Admin {
    '<div class="np-card np-span-4"><div class="np-section">Activity</div><h3>Live Activity</h3><div class="np-log">'+logs+'</div></div>'+
    '<div class="np-card np-span-12"><div class="np-tabs">'+['candidates','domains','pages','technologies','contacts','business','social','classifications','probes','errors','settings'].map((x,i)=>'<button class="np-tab '+(i===0?'active':'')+'" data-tab="'+x+'">'+x+'</button>').join('')+'</div><div id="np-tab-body"></div></div>'+
   '</div>';
-  const cancel=document.getElementById('np-cancel');if(cancel)cancel.onclick=async()=>{cancel.disabled=true;try{await api('/jobs/'+encodeURIComponent(j.job_id)+'/cancel',{method:'POST'});await poll()}catch(e){alert(e.message)}};
+  const cancel=document.getElementById('np-cancel');if(cancel)cancel.onclick=async()=>{if(!confirm('Job لغو شود؟'))return;cancel.disabled=true;try{await api('/jobs/'+encodeURIComponent(j.job_id)+'/cancel',{method:'POST'});await poll()}catch(e){alert(e.message)}};const pause=document.getElementById('np-pause');if(pause)pause.onclick=async()=>{pause.disabled=true;try{await api('/jobs/'+encodeURIComponent(j.job_id)+'/pause',{method:'POST'});await poll()}catch(e){alert(e.message)}};const resume=document.getElementById('np-resume');if(resume)resume.onclick=async()=>{resume.disabled=true;try{await api('/jobs/'+encodeURIComponent(j.job_id)+'/resume',{method:'POST'});await poll()}catch(e){alert(e.message)}};
   document.querySelectorAll('.np-tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.np-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');loadTab(b.dataset.tab,j)});
   loadTab('candidates',j);
  }
