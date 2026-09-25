@@ -42,7 +42,7 @@ class Numpo_Admin {
     <div class="np-card np-span-6"><div class="np-section-label">محدوده و فیلتر</div><label class="np-label">Country / TLD<select name="target_country"><option value="">بدون محدودیت</option><option value="ir">Iran (.ir)</option><option value="nl">Netherlands (.nl)</option><option value="us">United States (.us)</option><option value="de">Germany (.de)</option><option value="uk">United Kingdom (.uk)</option><option value="fr">France (.fr)</option><option value="tr">Turkey (.tr)</option></select></label><p class="np-help">فیلتر دامنه و سیگنال زبان/کشور، در صورت فعال بودن.</p></div>
     <div class="np-card np-span-12"><div class="np-section-label">محدودیت Crawl</div><div class="np-limits"><label class="np-label">Max pages<input class="np-input" type="number" min="1" name="max_pages" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_pages',100));?>"></label><label class="np-label">Max URLs<input class="np-input" type="number" min="1" name="max_urls" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_urls',500));?>"></label><label class="np-label">Max depth<input class="np-input" type="number" min="0" name="max_depth" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_depth',3));?>"></label><label class="np-label">Candidates / page<input class="np-input" type="number" min="1" name="max_candidates_per_page" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_candidates_per_page',50));?>"></label><label class="np-label">Revisit after<select class="np-input" name="revisit_after"><?php $rv=Numpo_Settings::int('numpo_revisit_after',0,0);?><option value="0" <?php selected($rv,0);?>>فقط یک‌بار</option><option value="86400" <?php selected($rv,86400);?>>هر 24 ساعت</option><option value="604800" <?php selected($rv,604800);?>>هر 7 روز</option><option value="2592000" <?php selected($rv,2592000);?>>هر 30 روز</option></select></label></div></div>
     <div class="np-card np-span-12"><div class="np-section-label">قابلیت‌های استخراج</div><div class="np-checks"><?php echo self::capChecks();?></div></div>
-    <div class="np-card np-span-12"><div class="np-actions"><button type="submit" class="np-btn np-primary">🟢 شروع Crawl</button><button type="button" class="np-btn" id="numpo-refresh">🔄 بروزرسانی Job فعال</button><span id="numpo-status" class="np-muted"></span></div></div>
+    <div class="np-card np-span-12"><div class="np-actions"><button type="submit" class="np-btn np-primary">🟢 شروع Crawl</button><button type="button" class="np-btn np-ghost" id="numpo-pause-start" disabled>⏸️ توقف موقت</button><button type="button" class="np-btn np-danger" id="numpo-cancel-start" disabled>⛔ لغو Job</button><button type="button" class="np-btn np-primary" id="numpo-resume-start" disabled>▶️ ادامه</button><button type="button" class="np-btn" id="numpo-refresh">🔄 بروزرسانی Job فعال</button><span id="numpo-status" class="np-muted"></span></div></div>
    </div>
   </form>
  </section>
@@ -89,7 +89,13 @@ class Numpo_Admin {
    historyRoot.querySelectorAll('.np-history-row').forEach(b=>b.onclick=()=>selectJob(b.dataset.jobId));
   }catch(e){historyRoot.innerHTML='<div class="notice notice-error"><p>'+esc(formatError(e))+'</p></div>';}
  }
- function selectJob(id){if(!id)return;activeJobId=String(id);localStorage.setItem('numpo_active_job_id',activeJobId);load(activeJobId);loadHistory();} 
+ function syncStartControls(status){
+  const p=document.getElementById('numpo-pause-start'),r=document.getElementById('numpo-resume-start'),x=document.getElementById('numpo-cancel-start');
+  if(!p||!r||!x)return;
+  p.disabled=!(status==='running'||status==='queued'); r.disabled=!(status==='paused'); x.disabled=!(status==='running'||status==='queued'||status==='paused');
+  const s=document.getElementById('numpo-status'); if(s)s.textContent=activeJobId?('Job #'+activeJobId+' · '+jobStatusLabel(status)):'';
+}
+function selectJob(id){if(!id)return;activeJobId=String(id);localStorage.setItem('numpo_active_job_id',activeJobId);load(activeJobId);loadHistory();} 
  async function loadProjectAggregate(){if(!activeJobId)return;try{const j=await fetch(restBase+'jobs/'+encodeURIComponent(activeJobId),{headers:{'X-WP-Nonce':restNonce}}).then(parseResponse);const p=await fetch(restBase+'project/'+encodeURIComponent(j.project_id)+'/metrics',{headers:{'X-WP-Nonce':restNonce}}).then(parseResponse);const box=document.getElementById('numpo-project-summary');if(box)box.innerHTML='<div class="np-card"><h3>مجموع Project · '+esc(j.project_id)+'</h3><div class="np-stats"><div><b>'+esc(p.jobs||0)+'</b><small>Jobs</small></div><div><b>'+esc(p.urls||0)+'</b><small>Unique URLs</small></div><div><b>'+esc(p.crawled_urls||0)+'</b><small>Crawled URLs</small></div><div><b>'+esc(p.domains||0)+'</b><small>Domains</small></div></div></div>';}catch(e){}} 
  document.getElementById('np-all-project')?.addEventListener('click',loadProjectAggregate);
 
@@ -178,7 +184,8 @@ class Numpo_Admin {
    const cancel=document.getElementById('np-cancel');if(cancel)cancel.onclick=async()=>{if(!confirm('Job لغو شود؟'))return;try{await api('/jobs/'+encodeURIComponent(id)+'/cancel',{method:'POST'});await load(id)}catch(e){showError(e)}};
    const pause=document.getElementById('np-pause');if(pause)pause.onclick=async()=>{try{await api('/jobs/'+encodeURIComponent(id)+'/pause',{method:'POST'});await load(id)}catch(e){showError(e)}};
    const resume=document.getElementById('np-resume');if(resume)resume.onclick=async()=>{try{await api('/jobs/'+encodeURIComponent(id)+'/resume',{method:'POST'});await load(id)}catch(e){showError(e)}};
-   if(status==='running'||status==='queued'){clearTimeout(window.numpoMonitorTimer);window.numpoMonitorTimer=setTimeout(()=>load(id),5000)}
+   syncStartControls(status);
+   if(status==='running'||status==='queued'||status==='paused'){clearTimeout(window.numpoMonitorTimer);window.numpoMonitorTimer=setTimeout(()=>load(id),5000)}
   }catch(e){showError(e)}
  }
  async function loadTab(tab,j){
@@ -197,11 +204,17 @@ class Numpo_Admin {
    const body={project_id:String(f.get('project_id')||''),mode:String(f.get('mode')||'manual'),seeds,sources,target,limits,capabilities:caps(f)};
    const result=await api('/jobs',{method:'POST',numpoStart:true,body});
    if(!result||!result.job_id)throw new Error('Engine job ID در پاسخ ایجاد Job وجود ندارد.');
-   await load(result.job_id);
+   activeJobId=String(result.job_id);localStorage.setItem('numpo_active_job_id',activeJobId);
+   const s=document.getElementById('numpo-status');if(s)s.textContent='Job #'+activeJobId+' · '+jobStatusLabel(result.status||'queued');
+   syncStartControls(result.status||'queued'); await load(result.job_id);
   }catch(e){showError(e);}
   finally{if(button){button.disabled=false;button.textContent=oldText;}}
  });
- document.getElementById('numpo-refresh').onclick=()=>{if(activeJobId)load(activeJobId);loadHistory();};loadHistory();if(activeJobId)load(activeJobId);document.addEventListener('click',e=>{if(e.target&&e.target.id==='np-monitor-refresh'&&activeJobId)load(activeJobId);});
+ document.getElementById('numpo-refresh').onclick=()=>{if(activeJobId)load(activeJobId);loadHistory();};
+ document.getElementById('numpo-pause-start').onclick=async()=>{if(!activeJobId)return;try{await api('/jobs/'+encodeURIComponent(activeJobId)+'/pause',{method:'POST'});await load(activeJobId);}catch(e){showError(e)}};
+ document.getElementById('numpo-resume-start').onclick=async()=>{if(!activeJobId)return;try{await api('/jobs/'+encodeURIComponent(activeJobId)+'/resume',{method:'POST'});await load(activeJobId);}catch(e){showError(e)}};
+ document.getElementById('numpo-cancel-start').onclick=async()=>{if(!activeJobId||!confirm('Job لغو شود؟'))return;try{await api('/jobs/'+encodeURIComponent(activeJobId)+'/cancel',{method:'POST'});await load(activeJobId);}catch(e){showError(e)}};
+ syncStartControls('');loadHistory();if(activeJobId)load(activeJobId);document.addEventListener('click',e=>{if(e.target&&e.target.id==='np-monitor-refresh'&&activeJobId)load(activeJobId);});
 })();
  </script>
 <?php }
