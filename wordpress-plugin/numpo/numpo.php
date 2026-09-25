@@ -12,6 +12,7 @@ define('NUMPO_MAIN_FILE',__FILE__);
 require_once NUMPO_DIR.'includes/class-numpo-settings.php';
 require_once NUMPO_DIR.'includes/class-numpo-db.php';
 require_once NUMPO_DIR.'includes/class-numpo-crawler.php';
+require_once NUMPO_DIR.'includes/class-numpo-discovery.php';
 require_once NUMPO_DIR.'includes/class-numpo-worker.php';
 require_once NUMPO_DIR.'includes/class-numpo-api.php';
 require_once NUMPO_DIR.'includes/class-numpo-admin.php';
