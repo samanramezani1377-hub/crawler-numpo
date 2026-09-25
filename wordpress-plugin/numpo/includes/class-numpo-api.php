@@ -7,7 +7,7 @@ class Numpo_API {
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'get']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/candidates',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'candidates']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/cancel',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'cancel']]);
-  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/(?P<resource>domains|pages|technologies|contacts)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'resource']]);
+  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/(?P<resource>domains|hosts|pages|technologies|contacts|business|social|classifications|probes)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'resource']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/facts',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'facts']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/errors',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'errors']]);
  }
@@ -32,7 +32,7 @@ class Numpo_API {
  public static function resource(WP_REST_Request $r){
   global $wpdb;$t=Numpo_DB::tables();$res=$r['resource'];$table=$t[$res]??null;if(!$table)return new WP_Error('not_found','Resource not found.',['status'=>404]);
   $project=$wpdb->get_var($wpdb->prepare("SELECT project_id FROM {$t['jobs']} WHERE id=%s",$r['id']));if(!$project)return new WP_Error('not_found','Job not found.',['status'=>404]);
-  $where=$res==='domains'?'project_id=%s':'domain_id IN (SELECT id FROM '.$t['domains'].' WHERE project_id=%s)';
+  if(in_array($res,['business','social','classifications','probes'],true)){ $type=$res==='business'?'business':($res==='social'?'social':($res==='classifications'?'page_classification':'probe')); $rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$t['facts']} WHERE job_id=%s AND type=%s ORDER BY created_at DESC LIMIT 200",$r['id'],$type),ARRAY_A); return self::ok(['items'=>$rows,'page'=>1,'per_page'=>200,'total'=>count($rows)]); }\n  if($res==='hosts')$res='domains';$where=$res==='domains'?'project_id=%s':'domain_id IN (SELECT id FROM '.$t['domains'].' WHERE project_id=%s)';
   $rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE {$where} ORDER BY 1 DESC LIMIT 200",$project),ARRAY_A);
   return self::ok(['items'=>$rows,'page'=>1,'per_page'=>200,'total'=>count($rows)]);
  }
