@@ -32,7 +32,11 @@ func TestServeHTTPRejectsWrongAPIKey(t *testing.T) {
 }
 
 func TestCreateJobReturnsJSONDecoderDetails(t *testing.T) {
-	s := &Server{Cfg: config.Config{APIKey: "secret", AllowAnonymousAPI: false}}
+	s := &Server{Cfg: config.Config{
+		APIKey: "secret",
+		AllowAnonymousAPI: false,
+		MaxBodyBytes: 2 << 20,
+	}}
 	body := strings.NewReader("{\"project_id\":\"p\",\"mode\":\"manual\",\"seeds\":[\"https://example.com\"]} trailing")
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/discovery/jobs", body)
 	req.Header.Set("Authorization", "Bearer secret")
