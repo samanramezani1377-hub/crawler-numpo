@@ -17,6 +17,8 @@ class Numpo_Worker {
   $domain_id=Numpo_DB::ensure_domain($row['project_id'],$candidate['normalized_domain']);
   Numpo_DB::add_page($domain_id,$result['url'],$result['status'],$result['title'],$result['content_type'],$candidate['depth']);
   foreach(Numpo_Crawler::technologies($result['body'],$result['url']) as $tech)Numpo_DB::add_technology($domain_id,$tech[0],$tech[1],[$tech[2]],$result['url']);
+  Numpo_Discovery::seed_links($job,$row['project_id'],$result['url'],$result['body'],$result['url']);
+  foreach(Numpo_Crawler::classify($result['body'],$result['url']) as $cls)Numpo_DB::add_fact($job,$domain_id,'page_classification',$cls[0],$cls[0],$cls[0],$result['url'],$cls[1],$cls[2]);
   foreach(Numpo_Crawler::contacts($result['body']) as $contact)Numpo_DB::add_contact($domain_id,$contact[0],$contact[1],$contact[2],$result['url']);
   if((int)$row['processed_pages'] < (int)$row['max_pages']){
    Numpo_DB::increment_job($job,'processed_pages');$added=0;
