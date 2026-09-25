@@ -56,7 +56,7 @@ func(s *Store)GetJobRuntimeMetrics(ctx context.Context,job string)(map[string]an
   {&probes,"SELECT count(*) FROM domain_probes p JOIN hosts h ON p.host_id=h.id JOIN domains d ON h.domain_id=d.id WHERE d.project_id=$1"},
   {&errors,"SELECT count(*) FROM job_errors WHERE job_id=$1"},
  }
- for _,x:=range queries{arg:=any(project);if strings.Contains(x.q,"job_id=$1"){arg=job};if e:=s.DB.QueryRow(ctx,x.q,arg).Scan(x.dest);e!=nil{return nil,e}}
+ for _,x:=range queries{arg:=any(project);if x.dest==&errors{arg=job};if e:=s.DB.QueryRow(ctx,x.q,arg).Scan(x.dest);e!=nil{return nil,e}}
  var currentURL string
  _=s.DB.QueryRow(ctx,"SELECT url FROM candidates WHERE discovery_job_id=$1 AND status='processing' ORDER BY processing_started_at DESC NULLS LAST LIMIT 1",job).Scan(&currentURL)
  var lastError,lastErrorAt string
