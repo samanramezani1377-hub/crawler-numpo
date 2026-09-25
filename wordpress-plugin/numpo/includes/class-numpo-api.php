@@ -30,9 +30,16 @@ class Numpo_API {
   $job=Numpo_DB::id();if(!Numpo_DB::create_job(['id'=>$job,'project_id'=>$project,'mode'=>$mode,'config'=>$cfg]))return new WP_Error('internal_error','Could not create Numpo job.',['status'=>500]);
   // Start request only creates the Job and queues a background bootstrap.
   // Seed insertion, discovery scheduling and worker startup happen outside this HTTP request.
-  $bootstrap=wp_schedule_single_event(time()+1,'numpo_bootstrap_job',[$job,$project,$seeds,$cfg]);
-  $scheduled=$bootstrap!==false;
-  return self::ok(['job_id'=>$job,'status'=>'queued','mode'=>$mode,'worker_scheduled'=>$scheduled,'created_at'=>gmdate('c')],202);
+  $bootstrap=wp_schedule_single_event(time(),'numpo_bootstrap_job',[$job,$project,$seeds,$cfg],true);
+  if($bootstrap!==true && !(is_wp_error($bootstrap)&&$bootstrap->get_error_code()==='duplicate_event')){
+   $message=is_wp_error($bootstrap)?$bootstrap->get_error_message():'Could not schedule background bootstrap.';
+   Numpo_DB::record_error($job,'worker','bootstrap_schedule_failed',$message,false);
+   Numpo_DB::set_job_status($job,'failed');
+   return new WP_Error('background_schedule_failed','Numpo could not start its background worker: '.$message,['status'=>500,'job_id'=>$job]);
+  }
+  // Kick WP-Cron from the Start request so the first background event does not depend on Monitoring being open.
+  if(function_exists('wp_cron'))wp_cron();
+  return self::ok(['job_id'=>$job,'status'=>'queued','mode'=>$mode,'worker_scheduled'=>true,'created_at'=>gmdate('c')],202);
  }
  public static function jobs(WP_REST_Request $r){
   $items=Numpo_DB::list_jobs((int)($r->get_param('limit')?:50));
