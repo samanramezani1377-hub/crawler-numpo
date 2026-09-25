@@ -4,6 +4,7 @@ class Numpo_API {
  public static function init(){add_action('rest_api_init',[__CLASS__,'routes']);}
  public static function routes(){
   register_rest_route('numpo/v1','/jobs',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'create']]);
+  register_rest_route('numpo/v1','/jobs',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'list']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'get']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/candidates',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'candidates']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/cancel',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'cancel']]);
@@ -31,6 +32,7 @@ class Numpo_API {
   Numpo_Worker::schedule($job);
   return self::ok(['job_id'=>$job,'status'=>'queued','mode'=>$mode,'created_at'=>gmdate('c')],202);
  }
+ public static function list(WP_REST_Request $r){return self::ok(['items'=>Numpo_DB::list_jobs((int)($r->get_param('limit')?:50))]);}
  public static function get(WP_REST_Request $r){$job=Numpo_DB::get_job($r['id']);if(!$job)return new WP_Error('not_found','Job not found.',['status'=>404]);$job['metrics']=Numpo_DB::metrics($r['id']);return self::ok($job);}
  public static function candidates(WP_REST_Request $r){$per=min(200,max(1,(int)($r->get_param('per_page')?:50)));$page=max(1,(int)($r->get_param('page')?:1));[$rows,$total]=Numpo_DB::candidates_page($r['id'],$per,($page-1)*$per);return self::ok(['items'=>$rows,'page'=>$page,'per_page'=>$per,'total'=>$total]);}
  public static function cancel(WP_REST_Request $r){$job=Numpo_DB::get_job($r['id']);if(!$job)return new WP_Error('not_found','Job not found.',['status'=>404]);Numpo_DB::set_job_status($r['id'],'cancelled');return self::ok(['job_id'=>$r['id'],'status'=>'cancelled']);}
