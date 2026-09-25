@@ -16,9 +16,7 @@ class Numpo_API {
 
  private static function decode_engine_json($body,$status,$path){
   $trim=trim((string)$body);
-  if($trim===''){
-   return new WP_Error('engine_empty_response','Numpo engine returned an empty response for '.$path.'. Check engine.log.',['status'=>502]);
-  }
+  if($trim==='')return new WP_Error('engine_empty_response','Numpo engine returned an empty response for '.$path.'. Check engine.log.',['status'=>502]);
   $data=json_decode($trim,true);
   if(json_last_error()!==JSON_ERROR_NONE||!is_array($data)){
    $preview=function_exists('mb_substr')?mb_substr($trim,0,800):substr($trim,0,800);
@@ -29,46 +27,44 @@ class Numpo_API {
   return $data;
  }
 
- private static function call($method,$path,$body=null){
-  if(Numpo_Settings::runtime_mode()!=='external'&&!Numpo_Runtime::ensure_started()){
-   return new WP_Error('engine_unavailable','Numpo engine is not ready. Check Numpo Runtime diagnostics and engine.log.',['status'=>502]);
-  }
-
+ private static function request($method,$path,$json=null,$content_type='application/json; charset=utf-8'){
+  if(Numpo_Settings::runtime_mode()!=='external'&&!Numpo_Runtime::ensure_started())return new WP_Error('engine_unavailable','Numpo engine is not ready. Check Numpo Runtime diagnostics and engine.log.',['status'=>502]);
   $url=Numpo_Settings::engine_url().'/api/v1'.$path;
-  if($url==='/api/v1'.$path){
-   return new WP_Error('engine_url_missing','Numpo engine URL is not configured.',['status'=>500]);
-  }
-
+  if($url==='/api/v1'.$path)return new WP_Error('engine_url_missing','Numpo engine URL is not configured.',['status'=>500]);
   $args=['method'=>$method,'timeout'=>30,'redirection'=>0,'headers'=>['Accept'=>'application/json']];
   if($k=Numpo_Settings::api_key())$args['headers']['Authorization']='Bearer '.$k;
-  if($body!==null){
-   $json=wp_json_encode($body);
-   if($json===false)return new WP_Error('request_json_encode_failed','Numpo could not encode the request as JSON.',['status'=>500]);
-   $args['headers']['Content-Type']='application/json; charset=utf-8';
+  if($json!==null){
+   $args['headers']['Content-Type']=$content_type;
    $args['body']=$json;
   }
-
   $r=wp_remote_request($url,$args);
-  if(is_wp_error($r)){
-   return new WP_Error('engine_unavailable','Numpo engine connection failed: '.$r->get_error_message(),['status'=>502]);
-  }
-
+  if(is_wp_error($r))return new WP_Error('engine_unavailable','Numpo engine connection failed: '.$r->get_error_message(),['status'=>502]);
   $status=(int)wp_remote_retrieve_response_code($r);
   $raw=(string)wp_remote_retrieve_body($r);
   $decoded=self::decode_engine_json($raw,$status,$path);
   if(is_wp_error($decoded))return $decoded;
-
   if($status<200||$status>=300){
    $code=is_array($decoded['error']??null)?($decoded['error']['code']??'engine_error'):'engine_error';
    $message=is_array($decoded['error']??null)?($decoded['error']['message']??'Engine request failed'):('Engine request failed with HTTP '.$status);
    $retry=is_array($decoded['error']??null)?(bool)($decoded['error']['retryable']??false):false;
    return new WP_Error(sanitize_key((string)$code),(string)$message,['status'=>$status,'retryable'=>$retry]);
   }
-
   return new WP_REST_Response($decoded,$status);
  }
 
+ private static function call($method,$path,$body=null){
+  if($body===null)return self::request($method,$path,null);
+  $json=wp_json_encode($body);
+  if($json===false)return new WP_Error('request_json_encode_failed','Numpo could not encode the request as JSON.',['status'=>500]);
+  return self::request($method,$path,$json);
+ }
+
  public static function create(WP_REST_Request $r){
+  $raw=trim((string)$r->get_body());
+  if($raw!==''){
+   $decoded=json_decode($raw,true);
+   if(json_last_error()===JSON_ERROR_NONE&&is_array($decoded))return self::request('POST','/discovery/jobs',$raw);
+  }
   $p=$r->get_json_params();
   if(!is_array($p))$p=$r->get_body_params();
   if(!is_array($p))return new WP_Error('invalid_request_body','Numpo received an invalid request body.',['status'=>400]);
@@ -77,7 +73,7 @@ class Numpo_API {
  public static function get(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']));}
  public static function candidates(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']).'/candidates');}
  public static function cancel(WP_REST_Request $r){return self::call('POST','/discovery/jobs/'.rawurlencode($r['id']).'/cancel');}
- public static function resource(WP_REST_Request $r){$path='/discovery/jobs/'.rawurlencode($r['id']).'/'.rawurlencode($r['resource']);return self::call('GET',$path);}
+ public static function resource(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']).'/'.rawurlencode($r['resource']));}
  public static function errors(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']).'/errors');}
 
  public static function export_csv($id){
