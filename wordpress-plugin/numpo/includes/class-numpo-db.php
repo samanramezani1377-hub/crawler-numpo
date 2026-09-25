@@ -124,6 +124,8 @@ class Numpo_DB {
   $parts=wp_parse_url($n);if(empty($parts['host']))return false;$host=strtolower($parts['host']);
   $domain=Numpo_Crawler::domain($host);$exists=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$t['candidates']} WHERE job_id=%s AND normalized_url=%s",$job,$n));
   if($exists)return true;
+  $jobRow=self::get_job($job);$project=$jobRow['project_id']??'';$cfg=$jobRow['config']??[];$revisit=(int)($cfg['revisit_after']??0);self::remember_url($project,$n,false);
+  if(!self::should_crawl($project,$n,$revisit))return true;
   return $wpdb->insert($t['candidates'],['id'=>self::id(),'job_id'=>$job,'url'=>$url,'normalized_url'=>$n,'normalized_domain'=>$domain,'normalized_host'=>$host,'source_type'=>$source,'parent_url'=>$parent,'priority'=>$priority,'confidence'=>$confidence,'status'=>'new','depth'=>max(0,$depth),'discovered_at'=>self::now(),'next_attempt_at'=>self::now()])!==false;
  }
  public static function next_candidate($job){
