@@ -21,7 +21,10 @@ class Numpo_Crawler {
  private static function private_host($host){
   if(filter_var($host,FILTER_VALIDATE_IP)){return self::private_ip($host);}
   if(in_array($host,['localhost','localhost.localdomain'],true)||substr($host,-6)==='.local'||substr($host,-10)==='.localhost')return true;
-  if(filter_var($host,FILTER_VALIDATE_IP,FILTER_FLAG_IPV6))return self::private_ip($host);\n  $ips=@gethostbynamel($host);if(is_array($ips)){foreach($ips as $ip)if(self::private_ip($ip))return true;}\n  if(function_exists('dns_get_record')){foreach((array)@dns_get_record($host,DNS_AAAA) as $r){if(!empty($r['ipv6'])&&self::private_ip($r['ipv6']))return true;}}\n  return false;
+  if(filter_var($host,FILTER_VALIDATE_IP,FILTER_FLAG_IPV6))return self::private_ip($host);
+  $ips=@gethostbynamel($host);if(is_array($ips)){foreach($ips as $ip)if(self::private_ip($ip))return true;}
+  if(function_exists('dns_get_record')){foreach((array)@dns_get_record($host,DNS_AAAA) as $r){if(!empty($r['ipv6'])&&self::private_ip($r['ipv6']))return true;}}
+  return false;
  }
  private static function private_ip($ip){
   if(!filter_var($ip,FILTER_VALIDATE_IP))return true;
@@ -33,14 +36,16 @@ class Numpo_Crawler {
   if($txt===false){$r=wp_safe_remote_get($scheme.'://'.$host.'/robots.txt',['timeout'=>8,'redirection'=>2,'limit_response_size'=>262144,'user-agent'=>'Numpo PHP Crawler/1.0']);if(is_wp_error($r)){set_transient($key,['allow'=>true],300);return true;}$code=(int)wp_remote_retrieve_response_code($r);$txt=$code>=400?'':(string)wp_remote_retrieve_body($r);set_transient($key,$txt,3600);}
   if($txt==='')return true;
   $path=(string)($p['path']??'/');$ua=false;$groups=[];$current=[];$active=false;
-  foreach(preg_split('/\\r?\\n/',$txt) as $line){$line=trim(preg_replace('/#.*$/','',$line));if($line==='')continue;$parts=explode(':',$line,2);if(count($parts)!==2)continue;$k=strtolower(trim($parts[0]));$v=trim($parts[1]);if($k==='user-agent'){$active=(strtolower($v)==='*'||stripos($v,'Numpo')!==false);$groups=[];continue;}if($active&&$k==='disallow'&&$v!=='')$groups[]=$v;}
+  foreach(preg_split('/\\r?\
+/',$txt) as $line){$line=trim(preg_replace('/#.*$/','',$line));if($line==='')continue;$parts=explode(':',$line,2);if(count($parts)!==2)continue;$k=strtolower(trim($parts[0]));$v=trim($parts[1]);if($k==='user-agent'){$active=(strtolower($v)==='*'||stripos($v,'Numpo')!==false);$groups=[];continue;}if($active&&$k==='disallow'&&$v!=='')$groups[]=$v;}
   foreach($groups as $rule){if($rule==='/'||strpos($path,$rule)===0)return false;}return true;
  }
  public static function rate_limit($url,$delay_ms=250){
   if($delay_ms<=0)return; $p=wp_parse_url($url);$host=strtolower((string)($p['host']??''));if($host==='')return;
   $key='numpo_rate_'.md5($host);$last=(float)get_transient($key);$now=microtime(true);$wait=($delay_ms/1000)-($now-$last);if($wait>0)usleep((int)($wait*1000000));set_transient($key,microtime(true),60);
  }
- public static function fetch($url,$timeout=15,$max_bytes=2097152,$options=[]){\n  $delay=max(0,(int)($options['rate_limit_ms']??250));if(!empty($options['respect_robots'])&&!self::robots_allowed($url))return new WP_Error('robots_blocked','URL is disallowed by robots.txt.');
+ public static function fetch($url,$timeout=15,$max_bytes=2097152,$options=[]){
+  $delay=max(0,(int)($options['rate_limit_ms']??250));if(!empty($options['respect_robots'])&&!self::robots_allowed($url))return new WP_Error('robots_blocked','URL is disallowed by robots.txt.');
   $url=self::normalize_url($url);if(!$url)return new WP_Error('ssrf_blocked','URL is invalid or resolves to a private/local address.');
   $current=$url;$response=null;
   for($hop=0;$hop<=3;$hop++){
@@ -58,14 +63,17 @@ class Numpo_Crawler {
   }
   if(!$response)return new WP_Error('http_error','No HTTP response.');
   if($status>=300&&$status<400)return new WP_Error('redirect_limit','Too many redirects.');
-  $url=$current;$body=(string)wp_remote_retrieve_body($response);\n  $length=(int)wp_remote_retrieve_header($response,'content-length');if($length>$max_bytes)return new WP_Error('response_too_large','Response exceeds the configured size limit.');\n  if(strlen($body)>$max_bytes)return new WP_Error('response_too_large','Response exceeds the configured size limit.');
+  $url=$current;$body=(string)wp_remote_retrieve_body($response);
+  $length=(int)wp_remote_retrieve_header($response,'content-length');if($length>$max_bytes)return new WP_Error('response_too_large','Response exceeds the configured size limit.');
+  if(strlen($body)>$max_bytes)return new WP_Error('response_too_large','Response exceeds the configured size limit.');
   $type=(string)wp_remote_retrieve_header($response,'content-type');
   if($status===429||$status>=500)return new WP_Error('http_'.$status,'HTTP '.$status);
   $title='';$links=[];
   if(stripos($type,'text/html')!==false||stripos($body,'<html')!==false){$doc=new DOMDocument();libxml_use_internal_errors(true);@$doc->loadHTML('<?xml encoding="UTF-8">'. $body);libxml_clear_errors();$titles=$doc->getElementsByTagName('title');if($titles->length)$title=trim($titles->item(0)->textContent);
    foreach($doc->getElementsByTagName('a') as $a){$href=trim((string)$a->getAttribute('href'));$n=self::resolve($url,$href);if($n)$links[$n]=true;if(count($links)>=50)break;}
   }
-  $headers=[];foreach(['server','x-powered-by','via','cf-ray','x-cache','x-cache-hits'] as $hn){$hv=(string)wp_remote_retrieve_header($response,$hn);if($hv!=='')$headers[]=[$hn,$hv];}\n  return ['url'=>$url,'status'=>$status,'title'=>$title,'content_type'=>$type,'body'=>$body,'links'=>array_keys($links),'headers'=>$headers];
+  $headers=[];foreach(['server','x-powered-by','via','cf-ray','x-cache','x-cache-hits'] as $hn){$hv=(string)wp_remote_retrieve_header($response,$hn);if($hv!=='')$headers[]=[$hn,$hv];}
+  return ['url'=>$url,'status'=>$status,'title'=>$title,'content_type'=>$type,'body'=>$body,'links'=>array_keys($links),'headers'=>$headers];
  }
  private static function resolve($base,$href){
   $href=trim(html_entity_decode($href,ENT_QUOTES,'UTF-8'));if($href===''||$href[0]==='#'||stripos($href,'javascript:')===0||stripos($href,'mailto:')===0||stripos($href,'tel:')===0)return null;
