@@ -72,6 +72,8 @@ class Numpo_Admin {
  <script>
 (function(){
  const root=document.getElementById('numpo-dashboard'), form=document.getElementById('numpo-form');
+ const ajaxUrl=<?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>;
+ const adminNonce=<?php echo wp_json_encode(wp_create_nonce('numpo_admin')); ?>;
  const restBase=<?php echo wp_json_encode(trailingslashit(rest_url('numpo/v1'))); ?>;
  const restNonce=<?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>;
  let activeJobId=null;
@@ -105,6 +107,28 @@ class Numpo_Admin {
   }
  }
  async function api(path,options={}){
+  if(path==='/jobs' && options.method==='POST' && options.numpoStart){
+   const payload=options.body||{};
+   const fd=new URLSearchParams();
+   fd.set('action','numpo_admin_create');
+   fd.set('nonce',adminNonce);
+   fd.set('project_id',payload.project_id||'');
+   fd.set('mode',payload.mode||'manual');
+   fd.set('seeds',JSON.stringify(payload.seeds||[]));
+   fd.set('sources',JSON.stringify(payload.sources||{}));
+   fd.set('target',JSON.stringify(payload.target||{}));
+   fd.set('limits',JSON.stringify(payload.limits||{}));
+   fd.set('capabilities',JSON.stringify(payload.capabilities||{}));
+   const response=await fetch(ajaxUrl,{method:'POST',credentials:'same-origin',headers:{'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded; charset=UTF-8'},body:fd.toString()});
+   const text=await response.text();
+   let data;
+   try{data=JSON.parse(text);}catch(e){throw new Error('پاسخ Start از WordPress JSON معتبر نبود (HTTP '+response.status+').');}
+   if(!response.ok || !data || data.success!==true){
+    const message=data?.data?.message || data?.data || data?.message || ('HTTP '+response.status);
+    throw new Error(typeof message==='string'?message:'خطا در ایجاد Job.');
+   }
+   return data.data;
+  }
   const opts={...options,credentials:'same-origin',headers:{'Accept':'application/json','X-WP-Nonce':restNonce,...(options.headers||{})}};
   if(opts.body!==undefined && opts.body!==null && typeof opts.body!=='string'){
    opts.headers['Content-Type']='application/json';
@@ -174,7 +198,7 @@ class Numpo_Admin {
     limits,
     capabilities:caps(f)
    };
-   const result=await api('/jobs',{method:'POST',body});
+   const result=await api('/jobs',{method:'POST',numpoStart:true,body});
    if(!result || !result.job_id) throw new Error('Engine job ID در پاسخ ایجاد Job وجود ندارد.');
    await load(result.job_id);
   }catch(e){showError(e);}
