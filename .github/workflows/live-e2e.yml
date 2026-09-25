@@ -1,0 +1,229 @@
+name: Numpo Live E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed_url:
+        description: "Public URL to crawl"
+        required: true
+        default: "https://example.com/"
+      max_pages:
+        description: "Maximum pages"
+        required: true
+        default: "3"
+      max_urls:
+        description: "Maximum URLs"
+        required: true
+        default: "3"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  live-e2e:
+    name: Real engine + embedded PostgreSQL + live crawl
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Build bundled engine
+        run: |
+          set -euo pipefail
+          mkdir -p dist/numpo/engine
+          CGO_ENABLED=0 GOAMD64=v1 go build -trimpath -ldflags="-s -w" -o dist/numpo/engine/numpo-engine ./cmd/numpo
+          chmod 0755 dist/numpo/engine/numpo-engine
+          test -x dist/numpo/engine/numpo-engine
+
+      - name: Seed bundled PostgreSQL runtime
+        env:
+          NUMPO_POSTGRES_CACHE: dist/numpo/engine/postgres-cache
+        run: |
+          set -euo pipefail
+          go run ./cmd/seed-postgres-cache
+          test -d dist/numpo/engine/postgres-cache
+
+      - name: Start real Numpo engine
+        env:
+          NUMPO_LISTEN_ADDR: "127.0.0.1:18080"
+          NUMPO_API_KEY: "github-actions-live-e2e-key"
+          NUMPO_ALLOW_ANONYMOUS_API: "false"
+          NUMPO_EMBEDDED_POSTGRES: "true"
+          NUMPO_EMBEDDED_RUNTIME_DIR: "$GITHUB_WORKSPACE/.numpo-runtime"
+          NUMPO_EMBEDDED_POSTGRES_CACHE_DIR: "$GITHUB_WORKSPACE/dist/numpo/engine/postgres-cache"
+          NUMPO_MIGRATIONS_DIR: "$GITHUB_WORKSPACE/migrations"
+          NUMPO_MAX_PAGES: "3"
+          NUMPO_MAX_URLS: "3"
+          NUMPO_MAX_DEPTH: "1"
+          NUMPO_MAX_CANDIDATES_PER_PAGE: "20"
+          NUMPO_DOMAIN_RATE_LIMIT_MS: "0"
+          NUMPO_PROBE_TTL_SECONDS: "0"
+        run: |
+          set -euo pipefail
+          mkdir -p .numpo-runtime
+          nohup ./dist/numpo/engine/numpo-engine > .numpo-engine.log 2>&1 &
+          echo $! > .numpo-engine.pid
+          for i in $(seq 1 60); do
+            if curl -fsS -H "Authorization: Bearer $NUMPO_API_KEY" http://127.0.0.1:18080/api/v1/health > .numpo-health.json; then
+              echo "Numpo engine is healthy."
+              cat .numpo-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          cat .numpo-engine.log || true
+          exit 1
+
+      - name: Run real discovery job
+        env:
+          NUMPO_API_KEY: "github-actions-live-e2e-key"
+          SEED_URL: ${{ inputs.seed_url || 'https://example.com/' }}
+          MAX_PAGES: ${{ inputs.max_pages || '3' }}
+          MAX_URLS: ${{ inputs.max_urls || '3' }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/numpo-live-e2e.go <<'EOF'
+          package main
+          import (
+            "bytes"
+            "context"
+            "encoding/json"
+            "fmt"
+            "net/http"
+            "os"
+            "strconv"
+            "time"
+            "github.com/google/uuid"
+            "github.com/jackc/pgx/v5"
+          )
+          func main() {
+            ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
+            defer cancel()
+            dsn := "postgres://numpo:numpo@127.0.0.1:55432/numpo?sslmode=disable"
+            var db *pgx.Conn
+            var err error
+            for i := 0; i < 30; i++ {
+              db, err = pgx.Connect(ctx, dsn)
+              if err == nil { break }
+              time.Sleep(time.Second)
+            }
+            if err != nil { panic(fmt.Errorf("embedded postgres: %w", err)) }
+            defer db.Close(ctx)
+            projectID := uuid.NewString()
+            if _, err := db.Exec(ctx, "INSERT INTO projects(id,name) VALUES($1,$2)", projectID, "github-live-e2e-"+projectID); err != nil {
+              panic(fmt.Errorf("create project: %w", err))
+            }
+            payload := map[string]any{
+              "project_id": projectID,
+              "mode": "manual",
+              "seeds": []string{os.Getenv("SEED_URL")},
+              "sources": map[string]bool{},
+              "target": map[string]any{},
+              "limits": map[string]int{
+                "max_pages": atoi(os.Getenv("MAX_PAGES"), 3),
+                "max_urls": atoi(os.Getenv("MAX_URLS"), 3),
+                "max_depth": 1,
+              },
+            }
+            body, _ := json.Marshal(payload)
+            req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "http://127.0.0.1:18080/api/v1/discovery/jobs", bytes.NewReader(body))
+            req.Header.Set("Authorization", "Bearer "+os.Getenv("NUMPO_API_KEY"))
+            req.Header.Set("Content-Type", "application/json")
+            resp, err := http.DefaultClient.Do(req)
+            if err != nil { panic(err) }
+            var created map[string]any
+            if err := json.NewDecoder(resp.Body).Decode(&created); err != nil { panic(err) }
+            resp.Body.Close()
+            if resp.StatusCode != http.StatusAccepted { panic(fmt.Errorf("create job HTTP %d: %#v", resp.StatusCode, created)) }
+            jobID, _ := created["job_id"].(string)
+            if jobID == "" { panic("empty job_id") }
+            deadline := time.Now().Add(3*time.Minute)
+            var final map[string]any
+            for time.Now().Before(deadline) {
+              req, _ = http.NewRequestWithContext(ctx, http.MethodGet, "http://127.0.0.1:18080/api/v1/discovery/jobs/"+jobID, nil)
+              req.Header.Set("Authorization", "Bearer "+os.Getenv("NUMPO_API_KEY"))
+              resp, err = http.DefaultClient.Do(req)
+              if err != nil { panic(err) }
+              final = map[string]any{}
+              if err := json.NewDecoder(resp.Body).Decode(&final); err != nil { panic(err) }
+              resp.Body.Close()
+              status, _ := final["status"].(string)
+              fmt.Printf("job=%s status=%s\n", jobID, status)
+              if status == "completed" { break }
+              if status == "failed" || status == "cancelled" { panic(fmt.Errorf("job ended with status %s", status)) }
+              time.Sleep(2*time.Second)
+            }
+            status, _ := final["status"].(string)
+            if status != "completed" { panic(fmt.Errorf("job timeout; status=%s", status)) }
+            processed, _ := final["processed_pages"].(float64)
+            if processed < 1 { panic("completed job processed no pages") }
+            result, _ := json.MarshalIndent(final, "", "  ")
+            _ = os.WriteFile("live-e2e-result.json", result, 0644)
+            fmt.Println(string(result))
+          }
+          func atoi(s string, fallback int) int {
+            n, err := strconv.Atoi(s)
+            if err != nil || n < 1 { return fallback }
+            return n
+          }
+          EOF
+          go run /tmp/numpo-live-e2e.go
+
+      - name: Verify persisted candidates
+        env:
+          NUMPO_API_KEY: "github-actions-live-e2e-key"
+        run: |
+          set -euo pipefail
+          job_id="$(python3 -c 'import json; print(json.load(open("live-e2e-result.json"))["job_id"])')"
+          curl -fsS -H "Authorization: Bearer $NUMPO_API_KEY" "http://127.0.0.1:18080/api/v1/discovery/jobs/$job_id/candidates" > live-e2e-candidates.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open("live-e2e-candidates.json"))
+          items=d.get("items", [])
+          assert isinstance(items, list), "items is not a list"
+          assert items, "no persisted candidates"
+          print(f"Persisted candidates: {len(items)}")
+          PY
+
+      - name: Publish live test summary
+        if: always()
+        run: |
+          {
+            echo "## Numpo Live E2E"
+            echo
+            if [ -f live-e2e-result.json ]; then
+              cat live-e2e-result.json
+            else
+              echo "No result JSON was produced."
+            fi
+            echo
+            echo "### Engine log"
+            tail -n 120 .numpo-engine.log 2>/dev/null || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload live test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: numpo-live-e2e-evidence
+          path: |
+            .numpo-health.json
+            .numpo-engine.log
+            live-e2e-result.json
+            live-e2e-candidates.json
+          if-no-files-found: warn
+
+      - name: Stop engine
+        if: always()
+        run: |
+          if [ -f .numpo-engine.pid ]; then
+            kill "$(cat .numpo-engine.pid)" 2>/dev/null || true
+          fi
