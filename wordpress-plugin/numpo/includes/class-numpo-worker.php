@@ -19,7 +19,7 @@ class Numpo_Worker {
   Numpo_DB::checkpoint($job,$candidate['normalized_url']);
   if((int)$row['processed_urls'] >= (int)$row['max_urls']){Numpo_DB::finish_candidate($candidate['id'],'failed_final','URL budget exhausted.');Numpo_DB::set_job_status($job,'completed');return;}
   $cfg=is_array($row['config']??null)?$row['config']:[];$result=Numpo_Crawler::fetch($candidate['normalized_url'],(int)($cfg['request_timeout']??15),(int)($cfg['max_response_bytes']??2097152),['rate_limit_ms'=>(int)($cfg['rate_limit_ms']??250),'respect_robots'=>array_key_exists('respect_robots',$cfg)?(bool)$cfg['respect_robots']:true]);
-  if(is_wp_error($result)){Numpo_DB::retry_candidate($candidate,$result->get_error_message());self::schedule($job);return;}
+  if(is_wp_error($result)){Numpo_DB::retry_candidate($candidate,$result->get_error_message());Numpo_DB::checkpoint($job,$candidate['normalized_url']);self::schedule($job);return;}
   Numpo_DB::increment_job($job,'processed_urls');
   $domain_id=Numpo_DB::ensure_domain($row['project_id'],$candidate['normalized_domain']);
   Numpo_DB::add_page($domain_id,$result['url'],$result['status'],$result['title'],$result['content_type'],$candidate['depth']);
@@ -43,6 +43,8 @@ class Numpo_Worker {
    }
   }
   Numpo_DB::finish_candidate($candidate['id'],'completed');
+  Numpo_DB::remember_url($row['project_id'],$candidate['normalized_url'],true,'',(int)($cfg['revisit_after']??0));
+  Numpo_DB::checkpoint($job,'');
   $next=Numpo_DB::get_job($job);
   if($next && (int)$next['processed_urls'] >= (int)$next['max_urls']){Numpo_DB::set_job_status($job,'completed');return;}
   if(Numpo_DB::has_pending($job))self::schedule($job);else Numpo_DB::set_job_status($job,'completed');
