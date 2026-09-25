@@ -55,6 +55,13 @@ class Numpo_DB {
    normalized_value varchar(191) NOT NULL, source_url text NULL, detected_at datetime NOT NULL,
    PRIMARY KEY(id), UNIQUE KEY domain_contact(domain_id,type,normalized_value)
   ) $charset;";
+  $sql[]="CREATE TABLE {$t['facts']} (
+   id varchar(64) NOT NULL, job_id varchar(64) NOT NULL, domain_id varchar(64) NOT NULL,
+   type varchar(40) NOT NULL, subtype varchar(60) NOT NULL DEFAULT '', value text NOT NULL,
+   normalized_value varchar(255) NOT NULL DEFAULT '', source_url text NULL, confidence double NOT NULL DEFAULT 0,
+   evidence text NULL, created_at datetime NOT NULL, PRIMARY KEY(id),
+   KEY domain_type(domain_id,type), KEY job_type(job_id,type), KEY normalized(normalized_value(191))
+  ) $charset;";
   $sql[]="CREATE TABLE {$t['errors']} (
    id varchar(64) NOT NULL, job_id varchar(64) NOT NULL, category varchar(50) NOT NULL, code varchar(100) NOT NULL DEFAULT '',
    message text NOT NULL, retryable tinyint(1) NOT NULL DEFAULT 0, attempt int unsigned NOT NULL DEFAULT 0,
@@ -137,6 +144,13 @@ class Numpo_DB {
  public static function add_contact($domain,$type,$value,$normalized,$source){
   global $wpdb;$t=self::tables();$exists=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$t['contacts']} WHERE domain_id=%s AND type=%s AND normalized_value=%s",$domain,$type,$normalized));if($exists)return true;
   return $wpdb->insert($t['contacts'],['id'=>self::id(),'domain_id'=>$domain,'type'=>$type,'value'=>$value,'normalized_value'=>$normalized,'source_url'=>$source,'detected_at'=>self::now()])!==false;
+ }
+ public static function add_fact($job,$domain,$type,$subtype,$value,$normalized='',$source='',$confidence=.5,$evidence=''){
+  global $wpdb;$t=self::tables();$exists=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$t['facts']} WHERE domain_id=%s AND type=%s AND subtype=%s AND normalized_value=%s",$domain,$type,$subtype,$normalized));if($exists)return true;
+  return $wpdb->insert($t['facts'],['id'=>self::id(),'job_id'=>$job,'domain_id'=>$domain,'type'=>$type,'subtype'=>$subtype,'value'=>$value,'normalized_value'=>$normalized,'source_url'=>$source,'confidence'=>$confidence,'evidence'=>$evidence,'created_at'=>self::now()])!==false;
+ }
+ public static function facts($job,$type='',$limit=200,$offset=0){
+  global $wpdb;$t=self::tables();$limit=min(500,max(1,(int)$limit));$offset=max(0,(int)$offset);$sql="SELECT f.* FROM {$t['facts']} f WHERE f.job_id=%s";$args=[$job];if($type!==''){$sql.=" AND f.type=%s";$args[]=$type;}$sql.=" ORDER BY f.created_at DESC LIMIT %d OFFSET %d";$args[]=$limit;$args[]=$offset;return $wpdb->get_results($wpdb->prepare($sql,...$args),ARRAY_A);
  }
  public static function candidates_page($job,$limit=50,$offset=0){
   global $wpdb;$t=self::tables();$limit=min(200,max(1,(int)$limit));$offset=max(0,(int)$offset);
