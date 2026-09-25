@@ -82,7 +82,7 @@ func TestConcurrentWorkerLoad(t *testing.T) {
 		workers[i] = &worker.Worker{
 			Store: st, Crawler: crawler, Prober: prober,
 			MaxPages: 80, MaxCandidatesPerPage: 5, MaxDepth: 0, MaxURLs: 80,
-			Lease: time.Second, DomainRateLimit: 0, ProbeTTL: 0,
+			Lease: 10 * time.Second, DomainRateLimit: 0, ProbeTTL: 0,
 			AllowSubdomains: false, AllowExternalLinks: false,
 		}
 	}
