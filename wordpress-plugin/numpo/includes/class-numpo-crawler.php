@@ -20,7 +20,7 @@ class Numpo_Crawler {
  }
  private static function private_host($host){
   if(filter_var($host,FILTER_VALIDATE_IP)){return self::private_ip($host);}
-  if(in_array($host,['localhost','localhost.localdomain'],true)||substr($host,-6)==='.local')return true;
+  if(in_array($host,['localhost','localhost.localdomain'],true)||substr($host,-6)==='.local'||substr($host,-10)==='.localhost')return true;
   $ips=@gethostbynamel($host);if(is_array($ips)){foreach($ips as $ip)if(self::private_ip($ip))return true;}return false;
  }
  private static function private_ip($ip){
