@@ -33,8 +33,8 @@ class Numpo_Worker {
    foreach($result['links'] as $link){
     if((int)$candidate['depth'] >= (int)$row['max_depth']||$added >= (int)$row['max_candidates_per_page'])break;
     $parts=wp_parse_url($link);$host=strtolower($parts['host']??'');
-    if($host===''||(!empty($row['config']['allow_external_links']) && Numpo_Crawler::domain($host)!==$candidate['normalized_domain']))continue;
-    if(Numpo_Crawler::domain($host)!==$candidate['normalized_domain'])continue;
+    if($host==='')continue;
+    if(empty($cfg['allow_external_links']) && Numpo_Crawler::domain($host)!==$candidate['normalized_domain'])continue;
     if(Numpo_DB::add_candidate($job,$link,'link_discovery',$result['url'],50,.7,(int)$candidate['depth']+1))$added++;
    }
   }
