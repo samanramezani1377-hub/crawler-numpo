@@ -31,9 +31,9 @@ class Numpo_API {
   foreach($seeds as $seed)if(!Numpo_DB::add_candidate($job,(string)$seed,'manual_seed','',100,1,0)){Numpo_DB::record_error($job,'discovery','invalid_seed','Invalid seed: '.(string)$seed,false);Numpo_DB::set_job_status($job,'failed');return new WP_Error('invalid_seed','Invalid seed URL.',['status'=>400]);}
   // Keep Start request fast: seed discovery (robots/sitemaps) runs asynchronously.
   foreach($seeds as $seed) wp_schedule_single_event(time()+1,'numpo_discover_seed',[$job,$project,(string)$seed,$cfg]);
-  // Start returns immediately; the worker begins after discovery has had a chance to enqueue sitemap/robots URLs.
-  wp_schedule_single_event(time()+3,'numpo_process_job',[$job]);
-  return self::ok(['job_id'=>$job,'status'=>'queued','mode'=>$mode,'created_at'=>gmdate('c')],202);
+  // Start returns immediately. The worker runs later through WP-Cron.
+  $scheduled=Numpo_Worker::schedule($job);
+  return self::ok(['job_id'=>$job,'status'=>'queued','mode'=>$mode,'worker_scheduled'=>$scheduled,'created_at'=>gmdate('c')],202);
  }
  public static function jobs(WP_REST_Request $r){
   $items=Numpo_DB::list_jobs((int)($r->get_param('limit')?:50));
