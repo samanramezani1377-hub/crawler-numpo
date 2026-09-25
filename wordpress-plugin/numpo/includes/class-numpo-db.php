@@ -8,7 +8,7 @@ class Numpo_DB {
   $p=$wpdb->prefix.'numpo_';
   return [
    'jobs'=>$p.'jobs','candidates'=>$p.'candidates','domains'=>$p.'domains','pages'=>$p.'pages',
-   'technologies'=>$p.'technologies','contacts'=>$p.'contacts','errors'=>$p.'errors'
+   'technologies'=>$p.'technologies','contacts'=>$p.'contacts','facts'=>$p.'facts','errors'=>$p.'errors'
   ];
  }
  public static function install(){
