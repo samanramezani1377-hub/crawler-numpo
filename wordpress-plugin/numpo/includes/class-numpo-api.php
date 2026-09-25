@@ -8,6 +8,7 @@ class Numpo_API {
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/candidates',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'candidates']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/cancel',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'cancel']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/(?P<resource>domains|pages|technologies|contacts)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'resource']]);
+  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/facts',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'facts']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/errors',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'errors']]);
  }
  public static function permission(){return current_user_can('manage_options');}
@@ -35,6 +36,12 @@ class Numpo_API {
   $rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE {$where} ORDER BY 1 DESC LIMIT 200",$project),ARRAY_A);
   return self::ok(['items'=>$rows,'page'=>1,'per_page'=>200,'total'=>count($rows)]);
  }
+ public static function facts(WP_REST_Request $r){$job=Numpo_DB::get_job($r['id']);if(!$job)return new WP_Error('not_found','Job not found.',['status'=>404]);$type=sanitize_key((string)$r->get_param('type'));return self::ok(['items'=>Numpo_DB::facts($r['id'],$type,200,0),'page'=>1,'per_page'=>200]);}
  public static function errors(WP_REST_Request $r){$per=min(200,max(1,(int)($r->get_param('per_page')?:50)));$page=max(1,(int)($r->get_param('page')?:1));return self::ok(['items'=>Numpo_DB::errors($r['id'],$per,($page-1)*$per),'page'=>$page,'per_page'=>$per]);}
- public static function export_csv($id){return new WP_Error('not_supported','CSV export is being migrated to the PHP-only crawler.',['status'=>501]);}
+ public static function export_csv($id){
+  $job=Numpo_DB::get_job($id);if(!$job)return new WP_Error('not_found','Job not found.',['status'=>404]);
+  [$rows,$total]=Numpo_DB::candidates_page($id,500,0);$out=fopen('php://temp','w+');fputcsv($out,['url','normalized_url','domain','source','status','confidence','depth','attempts','error']);
+  foreach($rows as $row)fputcsv($out,[$row['url'],$row['normalized_url'],$row['normalized_domain'],$row['source_type'],$row['status'],$row['confidence'],$row['depth'],$row['attempt_count'],$row['last_error']]);
+  rewind($out);$csv=stream_get_contents($out);fclose($out);return new WP_REST_Response($csv,200);
+ }
 }
