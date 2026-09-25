@@ -21,6 +21,7 @@ class Numpo_API {
   $cfg=is_array($p['limits']??null)?$p['limits']:[];$cfg['allow_external_links']=false;
   $job=Numpo_DB::id();if(!Numpo_DB::create_job(['id'=>$job,'project_id'=>$project,'mode'=>$mode,'config'=>$cfg]))return new WP_Error('internal_error','Could not create Numpo job.',['status'=>500]);
   foreach($seeds as $seed)if(!Numpo_DB::add_candidate($job,(string)$seed,'manual_seed','',100,1,0)){Numpo_DB::record_error($job,'discovery','invalid_seed','Invalid seed: '.(string)$seed,false);Numpo_DB::set_job_status($job,'failed');return new WP_Error('invalid_seed','Invalid seed URL.',['status'=>400]);}
+  Numpo_Discovery::seed_job($job,$project,(string)$seeds[0],$cfg);
   Numpo_Worker::schedule($job);
   return self::ok(['job_id'=>$job,'status'=>'queued','mode'=>$mode,'created_at'=>gmdate('c')],202);
  }
