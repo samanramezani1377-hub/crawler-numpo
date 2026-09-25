@@ -4,14 +4,14 @@ class Numpo_Plugin_Test extends WP_UnitTestCase {
   $this->assertSame('0.3.0', NUMPO_VERSION);
   $this->assertFileExists(NUMPO_DIR . 'numpo.php');
  }
- public function test_settings_normalize_engine_url(): void {
-  update_option('numpo_engine_url','https://engine.example.test/ ');
-  $this->assertSame('https://engine.example.test',Numpo_Settings::engine_url());
+ public function test_php_only_settings_do_not_expose_engine_runtime(): void {
+  $this->assertFalse(method_exists('Numpo_Settings','engine_url'));
+  $this->assertFalse(method_exists('Numpo_Settings','runtime_mode'));
  }
  public function test_rest_routes_are_registered(): void {
   do_action('rest_api_init');$routes=rest_get_server()->get_routes();
   foreach(['/numpo/v1/jobs','/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)','/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)/candidates','/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)/cancel','/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)/facts',
-   '/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)/errors','/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)/(?P<resource>domains|pages|technologies|contacts)'] as $route)$this->assertArrayHasKey($route,$routes);
+   '/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)/errors','/numpo/v1/jobs/(?P<id>[A-Za-z0-9-]+)/(?P<resource>domains|hosts|pages|technologies|contacts|business|social|classifications|probes)'] as $route)$this->assertArrayHasKey($route,$routes);
  }
  public function test_admin_permission_requires_capability(): void {
   wp_set_current_user(0);$this->assertFalse(Numpo_API::permission());$user=self::factory()->user->create(['role'=>'administrator']);wp_set_current_user($user);$this->assertTrue(Numpo_API::permission());
