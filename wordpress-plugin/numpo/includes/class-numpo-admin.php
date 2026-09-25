@@ -130,10 +130,15 @@ class Numpo_Admin {
   const status=d?.status?String(d.status):'';
   const preview=d?.body_preview?String(d.body_preview):'';
   const engineStatus=d?.engine_status?String(d.engine_status):'';
+  const jsonError=d?.json_error?String(d.json_error):'';
+  const jsonErrorCode=d?.json_error_code?String(d.json_error_code):'';
+  const field=d?.field?String(d.field):'';
   const parts=[message];
   if(code)parts.push('کد خطا: '+code);
   if(status)parts.push('HTTP: '+status);
   if(engineStatus)parts.push('Engine HTTP: '+engineStatus);
+  if(field)parts.push('فیلد: '+field);
+  if(jsonError)parts.push('JSON decoder: '+jsonError+(jsonErrorCode?' ('+jsonErrorCode+')':''));
   if(preview)parts.push('پاسخ Engine: '+preview);
   return parts.join(' | ');
  }
