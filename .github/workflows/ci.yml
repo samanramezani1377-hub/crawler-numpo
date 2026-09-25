@@ -1,59 +1,14 @@
-name: Numpo CI
+name: Numpo PHP-only CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, php-only]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  go:
-    name: Go engine
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: numpo_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d numpo_test"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-      - name: Check Go formatting (report only)
-        run: |
-          files=$(gofmt -l .)
-          if [ -n "$files" ]; then
-            echo "Go formatting differences found (legacy code is intentionally not rewritten in this CI pass):"
-            printf '%s\n' "$files"
-          fi
-      - run: go build -v ./...
-      - run: go test ./...
-        env:
-          NUMPO_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/numpo_test?sslmode=disable
-      - name: Run end-to-end and concurrent load tests
-        env:
-          NUMPO_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/numpo_test?sslmode=disable
-        run: |
-          go test ./internal/integration -run 'Test(HTTPDiscoveryEndToEnd|WorkerEndToEndPipeline|PostgresPersistence|ConcurrentWorkerLoad)$' -count=1 -v
-      - run: go test -race ./...
-        env:
-          NUMPO_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/numpo_test?sslmode=disable
-      - run: go vet ./...
-      - run: php -l wordpress-plugin/numpo/numpo.php
-      - run: for f in wordpress-plugin/numpo/includes/*.php; do php -l "$f"; done
-
   wordpress:
     name: WordPress PHPUnit / PHP ${{ matrix.php }}
     runs-on: ubuntu-latest
@@ -104,57 +59,33 @@ jobs:
         run: vendor/bin/phpunit -c phpunit.xml.dist
 
   package:
-    name: Build installable plugin ZIP
+    name: Build PHP-only installable plugin ZIP
     runs-on: ubuntu-latest
     needs: wordpress
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-      - name: Build bundled Go engine
+      - name: Validate PHP-only package
         run: |
           set -euo pipefail
-          rm -rf dist
-          mkdir -p dist/numpo/engine
-          CGO_ENABLED=0 GOAMD64=v1 go build -trimpath -ldflags="-s -w" -o dist/numpo/engine/numpo-engine ./cmd/numpo
-          file dist/numpo/engine/numpo-engine
-          chmod 0755 dist/numpo/engine/numpo-engine
-      - name: Seed bundled PostgreSQL runtime
-        env:
-          NUMPO_POSTGRES_CACHE: dist/numpo/engine/postgres-cache
-        run: |
-          set -euo pipefail
-          go run ./cmd/seed-postgres-cache
-          test -d dist/numpo/engine/postgres-cache
+          test -f wordpress-plugin/numpo/numpo.php
+          test ! -f wordpress-plugin/numpo/engine/numpo-engine
+          php -l wordpress-plugin/numpo/numpo.php
+          for f in wordpress-plugin/numpo/includes/*.php; do php -l "$f"; done
       - name: Build ZIP
         run: |
           set -euo pipefail
-          rsync -a wordpress-plugin/numpo/ dist/numpo/ \
-            --exclude='.git' --exclude='tests' --exclude='vendor' \
-            --exclude='composer.json' --exclude='phpunit.xml.dist' --exclude='bin'
-          cp -a migrations dist/numpo/migrations
+          rm -rf dist
+          mkdir -p dist/numpo
+          rsync -a wordpress-plugin/numpo/ dist/numpo/             --exclude='.git' --exclude='tests' --exclude='vendor'             --exclude='composer.json' --exclude='phpunit.xml.dist' --exclude='bin'             --exclude='engine'
           test -f dist/numpo/numpo.php
-          test -f dist/numpo/migrations/001_init.sql
-          test -x dist/numpo/engine/numpo-engine
+          test -f dist/numpo/includes/class-numpo-crawler.php
+          test -f dist/numpo/includes/class-numpo-db.php
+          test -f dist/numpo/includes/class-numpo-worker.php
           (cd dist && zip -qr numpo.zip numpo)
           unzip -t dist/numpo.zip
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: numpo-wordpress-plugin
+          name: numpo-wordpress-plugin-php-only
           path: dist/numpo.zip
           if-no-files-found: error
-
-  engine-image:
-    name: Build engine container
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate Compose configuration
-        env:
-          NUMPO_POSTGRES_PASSWORD: ci-test-password-012345678901234567890123
-          NUMPO_API_KEY: ci-test-api-key-012345678901234567890123456789
-        run: docker compose config --quiet
-      - name: Build engine image
-        run: docker build --pull -t numpo-engine:ci .
