@@ -70,9 +70,34 @@ class Numpo_Crawler {
   $out=strtolower($p['scheme']).'://'.strtolower($p['host']).(!empty($p['port'])?':'.$p['port']:'').$path;if(!empty($p['query']))$out.='?'.$p['query'];return $out;
  }
  public static function technologies($body,$url){
-  $l=strtolower($body);$out=[];
-  $markers=['WordPress'=>['wp-content/','wp-includes/'],'WooCommerce'=>['woocommerce','wc-ajax'],'Shopify'=>['cdn.shopify.com','shopify.theme'],'Joomla'=>['/media/jui/','com_content'],'Magento'=>['mage-cache-storage','magento'],'Laravel'=>['laravel_session','laravel'],'Google Analytics'=>['google-analytics.com','gtag('],'Meta Pixel'=>['connect.facebook.net','fbq('],'Stripe'=>['stripe.com','js.stripe.com']];
-  foreach($markers as $name=>$needles){foreach($needles as $needle)if(strpos($l,$needle)!==false){$out[]=[$name,.9,$needle];break;}}return $out;
+  $l=strtolower($body);$out=[];$seen=[];
+  $markers=['WordPress'=>['wp-content/','wp-includes/'],'WooCommerce'=>['woocommerce','wc-ajax'],'Shopify'=>['cdn.shopify.com','shopify.theme'],'Joomla'=>['/media/jui/','com_content'],'Magento'=>['mage-cache-storage','magento'],'Laravel'=>['laravel_session','laravel'],'Google Analytics'=>['google-analytics.com','gtag('],'Google Tag Manager'=>['googletagmanager.com','gtm.js'],'Meta Pixel'=>['connect.facebook.net','fbq('],'Stripe'=>['js.stripe.com','stripe.com/v3'],'Cloudflare'=>['cdnjs.cloudflare.com','cloudflareinsights.com']];
+  foreach($markers as $name=>$needles){foreach($needles as $needle)if(strpos($l,$needle)!==false){$out[]=[$name,.9,$needle];$seen[$name]=1;break;}}
+  if(preg_match_all('#<meta[^>]+name=["\\\']generator["\\\'][^>]+content=["\\\']([^"\\\']+)["\\\']#i',$body,$m))foreach($m[1] as $v){$v=trim($v);if($v!==''){$name=preg_replace('/\\s+.*$/','',$v);if($name!==''&&!isset($seen[$name])){$out[]=[$name,.85,'meta:generator='.$v];$seen[$name]=1;}}}
+  if(preg_match_all('#<(?:script|link)[^>]+(?:src|href)=["\\\']([^"\\\']+)["\\\']#i',$body,$m))foreach($m[1] as $src){$s=strtolower($src);$map=['Elementor'=>'elementor','Yoast SEO'=>'yoast','Google Maps'=>'maps.googleapis.com','reCAPTCHA'=>'google.com/recaptcha','Cloudflare Turnstile'=>'challenges.cloudflare.com'];foreach($map as $name=>$needle)if(strpos($s,$needle)!==false&&!isset($seen[$name])){$out[]=[$name,.8,$needle];$seen[$name]=1;}}
+  return $out;
+ }
+ public static function metadata($body){
+  $out=[];$patterns=[
+   'title'=>'#<title[^>]*>(.*?)</title>#is',
+   'description'=>'#<meta[^>]+(?:name|property)=["\\\'](?:description|og:description)["\\\'][^>]+content=["\\\'](.*?)["\\\']#is',
+   'site_name'=>'#<meta[^>]+property=["\\\']og:site_name["\\\'][^>]+content=["\\\'](.*?)["\\\']#is',
+   'canonical'=>'#<link[^>]+rel=["\\\']canonical["\\\'][^>]+href=["\\\'](.*?)["\\\']#is'
+  ];
+  foreach($patterns as $type=>$re)if(preg_match($re,$body,$m)){$v=trim(html_entity_decode(strip_tags($m[1]),ENT_QUOTES,'UTF-8'));if($v!=='')$out[]=[$type,$v];}
+  return $out;
+ }
+ public static function socials($body){
+  $out=[];$seen=[];if(!preg_match_all('#https?://[^"\\\'<>\\s]+#i',$body,$m))return $out;
+  $map=['instagram.com'=>'instagram','t.me'=>'telegram','telegram.me'=>'telegram','wa.me'=>'whatsapp','whatsapp.com'=>'whatsapp','linkedin.com'=>'linkedin','facebook.com'=>'facebook','youtube.com'=>'youtube','x.com'=>'x','twitter.com'=>'twitter'];
+  foreach($m[0] as $url){$host=strtolower((string)wp_parse_url($url,PHP_URL_HOST));foreach($map as $needle=>$type)if($host===$needle||substr($host,-strlen('.'.$needle))==='.'.ltrim($needle,'.')){ $key=$type.'|'.$url;if(!isset($seen[$key])){$seen[$key]=1;$out[]=[$type,$url];}break;}}
+  return $out;
+ }
+ public static function business($body){
+  $out=[];$types=['address'=>'#<address[^>]*>(.*?)</address>#is','phone'=>'#(?:tel:|تلفن|phone|تماس)[^<]{0,80}(\\+?[0-9۰-۹][0-9۰-۹\\s().-]{7,})#iu'];
+  foreach($types as $type=>$re)if(preg_match_all($re,$body,$m))foreach($m[1] as $v){$v=trim(preg_replace('/\\s+/',' ',strip_tags(html_entity_decode($v,ENT_QUOTES,'UTF-8'))));if($v!=='')$out[]=[$type,$v];}
+  if(preg_match('#<meta[^>]+property=["\\\']og:title["\\\'][^>]+content=["\\\'](.*?)["\\\']#is',$body,$m)&&trim($m[1])!=='')$out[]=['brand',trim(html_entity_decode($m[1],ENT_QUOTES,'UTF-8'))];
+  return $out;
  }
  public static function contacts($body){
   $out=[];$seen=[];preg_match_all('/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i',$body,$emails);
