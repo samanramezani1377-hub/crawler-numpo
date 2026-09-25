@@ -11,10 +11,12 @@ class Numpo_Worker {
   if(in_array($row['status'],['cancelled','completed','failed'],true))return;
   if($row['status']==='paused')return;
   Numpo_DB::set_job_status($job,'running');
+  Numpo_DB::recover_stale_candidates($job,15);
   $row=Numpo_DB::get_job($job);if(!$row||$row['status']==='paused'||$row['status']==='cancelled')return;
   $candidate=Numpo_DB::next_candidate($job);
-  if(!$candidate){Numpo_DB::set_job_status($job,'completed');return;}
+  if(!$candidate){if(Numpo_DB::has_resumable_work($job)){self::schedule($job);return;}Numpo_DB::set_job_status($job,'completed');return;}
   if(!Numpo_DB::mark_processing($candidate['id'])){self::schedule($job);return;}
+  Numpo_DB::checkpoint($job,$candidate['normalized_url']);
   if((int)$row['processed_urls'] >= (int)$row['max_urls']){Numpo_DB::finish_candidate($candidate['id'],'failed_final','URL budget exhausted.');Numpo_DB::set_job_status($job,'completed');return;}
   $cfg=is_array($row['config']??null)?$row['config']:[];$result=Numpo_Crawler::fetch($candidate['normalized_url'],(int)($cfg['request_timeout']??15),(int)($cfg['max_response_bytes']??2097152),['rate_limit_ms'=>(int)($cfg['rate_limit_ms']??250),'respect_robots'=>array_key_exists('respect_robots',$cfg)?(bool)$cfg['respect_robots']:true]);
   if(is_wp_error($result)){Numpo_DB::retry_candidate($candidate,$result->get_error_message());self::schedule($job);return;}
