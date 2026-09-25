@@ -19,7 +19,7 @@ class Numpo_Worker {
   Numpo_DB::increment_job($job,'processed_urls');
   $domain_id=Numpo_DB::ensure_domain($row['project_id'],$candidate['normalized_domain']);
   Numpo_DB::add_page($domain_id,$result['url'],$result['status'],$result['title'],$result['content_type'],$candidate['depth']);
-  foreach(Numpo_Crawler::technologies($result['body'],$result['url']) as $tech)Numpo_DB::add_technology($domain_id,$tech[0],$tech[1],[$tech[2]],$result['url']);
+  foreach(Numpo_Crawler::technologies($result['body'],$result['url']) as $tech)Numpo_DB::add_technology($domain_id,$tech[0],$tech[1],[$tech[2]],$result['url']);\n  foreach(Numpo_Crawler::metadata($result['body']) as $meta)Numpo_DB::add_fact($job,$domain_id,'metadata',$meta[0],$meta[1],$meta[1],$result['url'],.8,'html-meta');\n  foreach(Numpo_Crawler::socials($result['body']) as $social)Numpo_DB::add_fact($job,$domain_id,'social',$social[0],$social[1],$social[1],$result['url'],.85,'social-link');\n  foreach(Numpo_Crawler::business($result['body']) as $biz)Numpo_DB::add_fact($job,$domain_id,'business',$biz[0],$biz[1],$biz[1],$result['url'],.75,'business-marker');
   Numpo_Discovery::seed_links($job,$row['project_id'],$result['url'],$result['body'],$result['url']);
   foreach(Numpo_Crawler::classify($result['body'],$result['url']) as $cls)Numpo_DB::add_fact($job,$domain_id,'page_classification',$cls[0],$cls[0],$cls[0],$result['url'],$cls[1],$cls[2]);
   foreach(Numpo_Crawler::contacts($result['body']) as $contact)Numpo_DB::add_contact($domain_id,$contact[0],$contact[1],$contact[2],$result['url']);
