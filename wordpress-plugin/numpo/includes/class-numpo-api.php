@@ -29,7 +29,8 @@ class Numpo_API {
   $cfg['max_urls']=max(1,(int)($cfg['max_urls']??1000));$cfg['max_pages']=max(1,(int)($cfg['max_pages']??$cfg['max_urls']));$cfg['max_depth']=max(0,(int)($cfg['max_depth']??3));$cfg['max_candidates_per_page']=max(1,(int)($cfg['max_candidates_per_page']??50));$cfg['request_timeout']=max(3,min(60,(int)($cfg['request_timeout']??15)));$cfg['max_response_bytes']=max(65536,min(10485760,(int)($cfg['max_response_bytes']??2097152)));$cfg['rate_limit_ms']=max(0,min(10000,(int)($cfg['rate_limit_ms']??250)));$cfg['respect_robots']=array_key_exists('respect_robots',$cfg)?(bool)$cfg['respect_robots']:true;$cfg['allow_external_links']=!empty($cfg['allow_external_links']);
   $job=Numpo_DB::id();if(!Numpo_DB::create_job(['id'=>$job,'project_id'=>$project,'mode'=>$mode,'config'=>$cfg]))return new WP_Error('internal_error','Could not create Numpo job.',['status'=>500]);
   foreach($seeds as $seed)if(!Numpo_DB::add_candidate($job,(string)$seed,'manual_seed','',100,1,0)){Numpo_DB::record_error($job,'discovery','invalid_seed','Invalid seed: '.(string)$seed,false);Numpo_DB::set_job_status($job,'failed');return new WP_Error('invalid_seed','Invalid seed URL.',['status'=>400]);}
-  foreach($seeds as $seed)Numpo_Discovery::seed_job($job,$project,(string)$seed,$cfg);
+  // Keep Start request fast: seed discovery (robots/sitemaps) runs asynchronously.
+  foreach($seeds as $seed) wp_schedule_single_event(time()+2,'numpo_discover_seed',[$job,$project,(string)$seed,$cfg]);
   Numpo_Worker::schedule($job);
   return self::ok(['job_id'=>$job,'status'=>'queued','mode'=>$mode,'created_at'=>gmdate('c')],202);
  }
