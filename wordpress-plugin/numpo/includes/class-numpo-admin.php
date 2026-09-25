@@ -113,7 +113,7 @@ class Numpo_Admin {
    try{data=JSON.parse(text);}catch(e){throw new Error('پاسخ Start از WordPress JSON معتبر نبود (HTTP '+response.status+'). پاسخ: '+responsePreview(text));}
    if(!response.ok||!data||data.success!==true){
     const message=data?.data?.message||data?.data||data?.message||('HTTP '+response.status);
-    throw new Error(typeof message==='string'?message:'خطا در ایجاد Job. پاسخ: '+responsePreview(text));
+    const err=new Error(typeof message==='string'?message:'خطا در ایجاد Job.'); err.details=data?.data||{}; throw err;
    }
    return data.data;
   }
@@ -122,7 +122,22 @@ class Numpo_Admin {
   const response=await fetch(restBase+String(path).replace(/^\//,''),opts);
   return parseResponse(response);
  }
- function showError(error){root.innerHTML='<div class="notice notice-error"><p>'+esc(error?.message||String(error)||'Request failed')+'</p></div>';}
+ function formatError(error){
+  const d=error?.details||error;
+  let message=String(d?.message||error?.message||error||'خطای نامشخص در Numpo.');
+  if(message==='Invalid JSON.'||/^Invalid JSON\\.?$/i.test(message.trim()))message='Numpo پاسخ JSON نامعتبر از سرور دریافت کرد.';
+  const code=d?.code?String(d.code):'';
+  const status=d?.status?String(d.status):'';
+  const preview=d?.body_preview?String(d.body_preview):'';
+  const engineStatus=d?.engine_status?String(d.engine_status):'';
+  const parts=[message];
+  if(code)parts.push('کد خطا: '+code);
+  if(status)parts.push('HTTP: '+status);
+  if(engineStatus)parts.push('Engine HTTP: '+engineStatus);
+  if(preview)parts.push('پاسخ Engine: '+preview);
+  return parts.join(' | ');
+ }
+ function showError(error){root.innerHTML='<div class="notice notice-error"><p>'+esc(formatError(error))+'</p></div>';}
  async function load(id){
   activeJobId=id;
   try{
