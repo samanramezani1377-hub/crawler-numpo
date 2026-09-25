@@ -1,8 +1,22 @@
 <?php
 if(!defined('ABSPATH')) exit;
 class Numpo_Worker {
- public static function init(){add_action('numpo_process_job',[__CLASS__,'process']);add_action('numpo_recover_jobs',[__CLASS__,'recover']);if(!wp_next_scheduled('numpo_recover_jobs'))wp_schedule_event(time()+300,'hourly','numpo_recover_jobs');}
- public static function schedule($job){if(!wp_next_scheduled('numpo_process_job',[$job]))wp_schedule_single_event(time()+1,'numpo_process_job',[$job]);}
+ public static function init(){
+  add_filter('cron_schedules',[__CLASS__,'cron_schedules']);
+  add_action('numpo_process_job',[__CLASS__,'process']);
+  add_action('numpo_recover_jobs',[__CLASS__,'recover']);
+  if(!wp_next_scheduled('numpo_recover_jobs'))wp_schedule_event(time()+60,'numpo_five_minutes','numpo_recover_jobs');
+ }
+ public static function cron_schedules($schedules){
+  if(!isset($schedules['numpo_five_minutes']))$schedules['numpo_five_minutes']=['interval'=>300,'display'=>'Numpo every 5 minutes'];
+  return $schedules;
+ }
+ public static function schedule($job){
+  $row=Numpo_DB::get_job($job);
+  if(!$row||in_array($row['status'],['paused','cancelled','completed','failed'],true))return false;
+  if(!wp_next_scheduled('numpo_process_job',[$job]))return wp_schedule_single_event(time()+1,'numpo_process_job',[$job]);
+  return true;
+}
  public static function recover(){
   global $wpdb;$t=Numpo_DB::tables();$jobs=$wpdb->get_col("SELECT id FROM {$t['jobs']} WHERE status IN ('running','queued') AND updated_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 15 MINUTE) LIMIT 20");foreach($jobs as $job){Numpo_DB::recover_stale_candidates($job,15);self::schedule($job);}
  }
