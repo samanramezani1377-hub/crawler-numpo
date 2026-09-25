@@ -52,7 +52,7 @@ class Numpo_Crawler {
   if(stripos($type,'text/html')!==false||stripos($body,'<html')!==false){$doc=new DOMDocument();libxml_use_internal_errors(true);@$doc->loadHTML('<?xml encoding="UTF-8">'. $body);libxml_clear_errors();$titles=$doc->getElementsByTagName('title');if($titles->length)$title=trim($titles->item(0)->textContent);
    foreach($doc->getElementsByTagName('a') as $a){$href=trim((string)$a->getAttribute('href'));$n=self::resolve($url,$href);if($n)$links[$n]=true;if(count($links)>=50)break;}
   }
-  return ['url'=>$url,'status'=>$status,'title'=>$title,'content_type'=>$type,'body'=>$body,'links'=>array_keys($links)];
+  $headers=[];foreach(['server','x-powered-by','via','cf-ray','x-cache','x-cache-hits'] as $hn){$hv=(string)wp_remote_retrieve_header($response,$hn);if($hv!=='')$headers[]=[$hn,$hv];}\n  return ['url'=>$url,'status'=>$status,'title'=>$title,'content_type'=>$type,'body'=>$body,'links'=>array_keys($links),'headers'=>$headers];
  }
  private static function resolve($base,$href){
   $href=trim(html_entity_decode($href,ENT_QUOTES,'UTF-8'));if($href===''||$href[0]==='#'||stripos($href,'javascript:')===0||stripos($href,'mailto:')===0||stripos($href,'tel:')===0)return null;
