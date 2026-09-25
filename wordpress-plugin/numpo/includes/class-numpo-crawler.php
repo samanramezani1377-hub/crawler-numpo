@@ -10,7 +10,14 @@ class Numpo_Crawler {
   $out=strtolower($u['scheme']).'://'.$host.$path;
   if(!empty($u['query']))$out.='?'.$u['query'];return rtrim($out,'#');
  }
- public static function domain($host){$host=strtolower(trim($host));$parts=explode('.',$host);return count($parts)>=2?implode('.',array_slice($parts,-2)):$host;}
+ public static function domain($host){
+  $host=strtolower(trim($host));$host=trim($host,'.');
+  if($host===''||filter_var($host,FILTER_VALIDATE_IP))return $host;
+  $parts=explode('.',$host);$n=count($parts);if($n<=2)return $host;
+  $suffix2=['co.uk','org.uk','ac.uk','gov.uk','com.au','net.au','org.au','co.jp','co.nz','com.br','com.tr','com.cn'];
+  $tail2=$parts[$n-2].'.'.$parts[$n-1];if(in_array($tail2,$suffix2,true)&&$n>=3)return implode('.',array_slice($parts,-3));
+  return $tail2;
+ }
  private static function private_host($host){
   if(filter_var($host,FILTER_VALIDATE_IP)){return self::private_ip($host);}
   if(in_array($host,['localhost','localhost.localdomain'],true)||substr($host,-6)==='.local')return true;
