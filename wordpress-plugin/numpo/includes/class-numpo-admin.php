@@ -11,31 +11,33 @@ class Numpo_Admin {
  }
  public static function page(){if(!current_user_can('manage_options'))return;?>
  <style>
-#numpo-app{max-width:1180px;margin-top:18px}
+#numpo-app{--p:#6d5dfc;--pd:#5548d9;--b:#e5e7ef;--m:#687083;max-width:1240px;margin:20px 20px 40px 0;color:#171925}
+#numpo-app *{box-sizing:border-box}#numpo-app .numpo-hero{background:linear-gradient(135deg,#171925,#302b61 55%,#6d5dfc);color:#fff;border-radius:20px;padding:26px 28px;margin-bottom:18px;box-shadow:0 12px 35px rgba(35,31,83,.18)}
+#numpo-app .numpo-hero h1{color:#fff;margin:0 0 7px;font-size:26px}.numpo-hero p{margin:0;color:rgba(255,255,255,.82)}
 #numpo-app .numpo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-#numpo-app .numpo-card{background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:18px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
-#numpo-app .numpo-card h2{margin:0 0 14px;font-size:16px}
-#numpo-app .numpo-card p:last-child{margin-bottom:0}
-#numpo-app .numpo-field{display:block;margin:0 0 14px}
-#numpo-app .numpo-field:last-child{margin-bottom:0}
-#numpo-app .numpo-field>span{display:block;font-weight:600;margin-bottom:6px}
-#numpo-app input[type=text],#numpo-app input[type=number],#numpo-app select,#numpo-app textarea{width:100%;box-sizing:border-box}
-#numpo-app textarea{min-height:130px;resize:vertical}
-#numpo-app .numpo-help{color:#646970;font-size:12px;margin-top:6px}
-#numpo-app .numpo-checks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-#numpo-app .numpo-check{display:flex;align-items:center;gap:8px;margin:0;padding:10px 12px;border:1px solid #dcdcde;border-radius:8px;background:#f6f7f7;cursor:pointer;min-height:20px}
-#numpo-app .numpo-check:hover{border-color:#8c8f94;background:#fff}
-#numpo-app .numpo-check input{margin:0}
+#numpo-app .numpo-card,#numpo-app .postbox{background:#fff;border:1px solid var(--b);border-radius:16px;box-shadow:0 3px 14px rgba(20,24,40,.045);padding:20px}
+#numpo-app .numpo-card h2,#numpo-app .postbox h2,#numpo-app .postbox h3{margin:0 0 16px;font-size:16px}
+#numpo-app input[type=text],#numpo-app input[type=number],#numpo-app select,#numpo-app textarea{width:100%;border:1px solid #d8dce6;border-radius:10px;padding:8px 11px;min-height:42px}
+#numpo-app textarea{min-height:130px;line-height:1.7}#numpo-app input:focus,#numpo-app select:focus,#numpo-app textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(109,93,252,.12);outline:none}
+#numpo-app .description,#numpo-app .numpo-help{color:var(--m);font-size:12px;line-height:1.7}
+#numpo-app .numpo-checks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+#numpo-app .numpo-check{display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid var(--b);border-radius:11px;background:#fafbfc;cursor:pointer;min-height:44px}
+#numpo-app .numpo-check input{margin:0}.numpo-check:hover{border-color:#c6c0ff;background:#f7f5ff}
 #numpo-app .numpo-limits{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-#numpo-app .numpo-actions{display:flex;align-items:center;gap:8px;margin:16px 0 22px}
-#numpo-app .numpo-status{min-height:20px}
-#numpo-app .numpo-wide{grid-column:1/-1}
-#numpo-app .numpo-pill{display:inline-block;padding:3px 8px;border-radius:999px;background:#f0f0f1;font-size:12px}
-@media(max-width:900px){#numpo-app .numpo-grid{grid-template-columns:1fr}#numpo-app .numpo-wide{grid-column:auto}#numpo-app .numpo-checks{grid-template-columns:repeat(2,minmax(0,1fr))}#numpo-app .numpo-limits{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){#numpo-app .numpo-checks,#numpo-app .numpo-limits{grid-template-columns:1fr}}
+#numpo-app .numpo-actions{display:flex;align-items:center;gap:9px;margin:16px 0 22px;flex-wrap:wrap}
+#numpo-app .numpo-actions .button-primary{background:var(--p);border-color:var(--p)}#numpo-app .numpo-wide{grid-column:1/-1}
+#numpo-app .numpo-pill{display:inline-flex;padding:5px 10px;border-radius:999px;background:#f0efff;color:#5548d9;font-size:12px;font-weight:600}
+#numpo-app .numpo-section-title{display:flex;justify-content:space-between;align-items:center;margin:24px 0 10px}#numpo-app .numpo-section-title h2{margin:0}
+#numpo-app .numpo-runtime{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:18px}
+#numpo-app .numpo-runtime-item{background:#fafbfc;border:1px solid var(--b);border-radius:12px;padding:12px}.numpo-ok{color:#16834b}.numpo-warn{color:#b56b00}
+#numpo-app .numpo-settings-card{background:#fff;border:1px solid var(--b);border-radius:16px;padding:4px 18px 14px}
+#numpo-app .numpo-savebar{position:sticky;bottom:12px;z-index:5;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border:1px solid var(--b);border-radius:14px;padding:12px 14px;margin-top:18px;box-shadow:0 8px 25px rgba(20,24,40,.10)}
+#numpo-app .numpo-table-wrap{overflow:auto;border:1px solid var(--b);border-radius:12px}
+@media(max-width:900px){#numpo-app{margin-right:10px}.numpo-grid{grid-template-columns:1fr!important}.numpo-wide{grid-column:auto!important}.numpo-checks{grid-template-columns:repeat(2,minmax(0,1fr))!important}.numpo-limits{grid-template-columns:repeat(2,minmax(0,1fr))!important}.numpo-runtime{grid-template-columns:1fr}}
+@media(max-width:600px){#numpo-app{margin:12px 8px 30px 0}.numpo-hero{border-radius:15px!important;padding:20px!important}.numpo-hero h1{font-size:21px}.numpo-card,.numpo-postbox{padding:15px!important;border-radius:13px!important}.numpo-checks,.numpo-limits{grid-template-columns:1fr!important}.numpo-actions{display:grid;grid-template-columns:1fr 1fr}.numpo-actions .button{width:100%;min-height:42px}.numpo-status{grid-column:1/-1}.numpo-settings-card{padding:4px 12px 12px}}
+@media(max-width:480px){#numpo-app .numpo-actions{grid-template-columns:1fr}.numpo-hero p{font-size:13px}}
 </style><div class="wrap" id="numpo-app">
-  <h1>Numpo Discovery</h1>
-  <p>ایجاد، پایش و بررسی Jobهای Discovery از یک صفحه.</p>
+  <div class="numpo-hero"><h1>Numpo Discovery</h1><p>کراول، کشف و تحلیل سایت‌ها؛ سریع، امن و PHP-only.</p></div>
   <form id="numpo-form">
    <div class="numpo-grid">
     <div class="numpo-card"><h2>Job</h2>
@@ -178,24 +180,23 @@ class Numpo_Admin {
 })();
  </script><?php }
  public static function settings(){if(!current_user_can('manage_options'))return;?>
- <div class="wrap" id="numpo-app"><h1>Numpo Settings</h1>
+ <div class="wrap" id="numpo-app"><div class="numpo-hero"><h1>تنظیمات Numpo</h1><p>Runtime، محدودیت‌های Crawl، امنیت و قابلیت‌های پیش‌فرض را از اینجا مدیریت کنید.</p></div>
  <?php $diag=Numpo_Diagnostics::check(); ?>
- <div class="postbox" style="padding:16px;max-width:1100px"><h2>PHP Runtime</h2><p><strong><?php echo $diag['ok']?'Ready':'Blocked'; ?></strong></p>
+ <div class="numpo-runtime"><div class="numpo-runtime-item"><strong>PHP Runtime</strong><span class="<?php echo $diag['ok']?'numpo-ok':'numpo-warn'; ?>"><?php echo $diag['ok']?'Ready':'Blocked'; ?></span></div><div class="numpo-runtime-item"><strong>Architecture</strong><span class="numpo-ok">PHP-only</span></div><div class="numpo-runtime-item"><strong>External Engine</strong><span class="numpo-ok">Not required</span></div></div><div class="numpo-settings-card"><h2>PHP Runtime</h2><p><strong><?php echo $diag['ok']?'Ready':'Blocked'; ?></strong></p>
  <table class="widefat striped"><thead><tr><th>Component</th><th>Status</th><th>Value</th></tr></thead><tbody>
  <?php foreach($diag['checks'] as $check): ?><tr><td><?php echo esc_html($check['label']); ?></td><td><?php echo $check['ok']?'OK':($check['required']?'Required':'Optional'); ?></td><td><?php echo esc_html($check['value']); ?></td></tr><?php endforeach; ?>
- </tbody></table><p class="description">Numpo PHP-only است و برای crawl به Go Engine، Chromium یا PostgreSQL داخلی نیاز ندارد.</p></div>
+ </tbody></table><p class="description">Numpo PHP-only است و برای Crawl به Go Engine، Chromium یا PostgreSQL داخلی نیاز ندارد.</p></div>
  <form method="post" action="<?php echo esc_url(admin_url('admin-post.php'));?>"><?php wp_nonce_field('numpo_save');?><input type="hidden" name="action" value="numpo_save">
- <h2>Discovery defaults</h2><table class="form-table">
+ <div class="numpo-section-title"><h2>Discovery defaults</h2><span class="numpo-pill">پیش‌فرض‌ها</span></div><div class="numpo-settings-card"><table class="form-table">
  <tr><th>Default project</th><td><input class="regular-text" name="default_project" value="<?php echo esc_attr(Numpo_Settings::default_project());?>"></td></tr>
  <tr><th>Search provider template</th><td><input class="large-text" name="search_url_template" value="<?php echo esc_attr(Numpo_Settings::search_url_template());?>" placeholder="https://provider.example/search?q={query}"></td></tr>
- </table>
- <h2>Safety & crawl limits</h2><table class="form-table">
+ </table></div><div class="numpo-section-title"><h2>Safety & crawl limits</h2><span class="numpo-pill">امنیت و عملکرد</span></div><div class="numpo-settings-card"><table class="form-table"><table class="form-table">
  <tr><th>Limits</th><td>Max pages <input type="number" min="1" name="max_pages" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_pages',100));?>"> &nbsp; Max URLs <input type="number" min="1" name="max_urls" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_urls',500));?>"> &nbsp; Max depth <input type="number" min="0" name="max_depth" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_depth',3));?>"> &nbsp; Candidates/page <input type="number" min="1" name="max_candidates_per_page" value="<?php echo esc_attr(Numpo_Settings::int('numpo_max_candidates_per_page',50));?>"></td></tr>
  <tr><th>Rate limit</th><td><input type="number" min="0" name="domain_rate_limit_ms" value="<?php echo esc_attr(Numpo_Settings::int('numpo_domain_rate_limit_ms',250,0));?>"> ms per domain</td></tr>
  <tr><th>Probe cache TTL</th><td><input type="number" min="1" name="probe_ttl_seconds" value="<?php echo esc_attr(Numpo_Settings::int('numpo_probe_ttl_seconds',3600));?>"> seconds</td></tr>
  <tr><th>Scope</th><td><label><input type="checkbox" name="allow_subdomains" value="1" <?php checked(Numpo_Settings::bool('allow_subdomains',false),true);?>> Allow subdomains</label><br><label><input type="checkbox" name="allow_external_links" value="1" <?php checked(Numpo_Settings::bool('allow_external_links',false),true);?>> Allow external links</label></td></tr>
- </table><h2>Default capabilities</h2><div class="numpo-checks"><?php echo self::capChecks();?></div>
- <p><button class="button button-primary">Save settings</button></p></form></div><?php }
+ </table></div><div class="numpo-section-title"><h2>Default capabilities</h2><span class="numpo-pill">قابلیت‌ها</span></div><div class="numpo-settings-card"><div class="numpo-checks"><?php echo self::capChecks();?></div>
+ <div class="numpo-savebar"><button class="button button-primary button-hero">ذخیره تنظیمات</button><span class="description">تنظیمات جدید برای Jobهای بعدی اعمال می‌شوند.</span></div></div></form></div><?php }
  public static function save(){
   if(!current_user_can('manage_options')||!check_admin_referer('numpo_save'))wp_die('Forbidden');
   update_option('numpo_default_project',sanitize_text_field(wp_unslash($_POST['default_project']??'default')));
