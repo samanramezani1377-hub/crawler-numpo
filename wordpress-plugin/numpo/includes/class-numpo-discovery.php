@@ -19,7 +19,9 @@ class Numpo_Discovery {
  }
  private static function sitemap_urls($xml,$job,$domain,$source,$depth=0){
   if(!preg_match_all('/<loc>\s*(.*?)\s*<\/loc>/is',$xml,$m))return;
-  foreach(array_slice($m[1],0,200) as $url){$url=html_entity_decode(trim(strip_tags($url)));if(!Numpo_Crawler::normalize_url($url))continue;\n   if(preg_match('/<sitemapindex|<sitemap>/i',$xml)&&$depth<2){$r=Numpo_Crawler::fetch($url,10,1048576,['respect_robots'=>false,'rate_limit_ms'=>250]);if(!is_wp_error($r))self::sitemap_urls($r['body'],$job,$domain,$source,$depth+1);continue;}\n   Numpo_DB::add_candidate($job,$url,'sitemap',$source,80,.9,1);}
+  foreach(array_slice($m[1],0,200) as $url){$url=html_entity_decode(trim(strip_tags($url)));if(!Numpo_Crawler::normalize_url($url))continue;
+   if(preg_match('/<sitemapindex|<sitemap>/i',$xml)&&$depth<2){$r=Numpo_Crawler::fetch($url,10,1048576,['respect_robots'=>false,'rate_limit_ms'=>250]);if(!is_wp_error($r))self::sitemap_urls($r['body'],$job,$domain,$source,$depth+1);continue;}
+   Numpo_DB::add_candidate($job,$url,'sitemap',$source,80,.9,1);}
  }
  public static function seed_links($job,$project,$seed,$body,$source){
   $domain=Numpo_DB::ensure_domain($project,Numpo_Crawler::domain((string)wp_parse_url($seed,PHP_URL_HOST)));
