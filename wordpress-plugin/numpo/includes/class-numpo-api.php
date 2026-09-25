@@ -34,7 +34,7 @@ class Numpo_API {
   global $wpdb;$t=Numpo_DB::tables();$res=$r['resource'];$table=$t[$res]??null;if(!$table)return new WP_Error('not_found','Resource not found.',['status'=>404]);
   $project=$wpdb->get_var($wpdb->prepare("SELECT project_id FROM {$t['jobs']} WHERE id=%s",$r['id']));if(!$project)return new WP_Error('not_found','Job not found.',['status'=>404]);
   if(in_array($res,['business','social','classifications','probes'],true)){ $type=$res==='business'?'business':($res==='social'?'social':($res==='classifications'?'page_classification':'probe')); $rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$t['facts']} WHERE job_id=%s AND type=%s ORDER BY created_at DESC LIMIT 200",$r['id'],$type),ARRAY_A); return self::ok(['items'=>$rows,'page'=>1,'per_page'=>200,'total'=>count($rows)]); }
-  if($res==='hosts')$res='domains';$where=$res==='domains'?'project_id=%s':'domain_id IN (SELECT id FROM '.$t['domains'].' WHERE project_id=%s)';
+  if($res==='hosts')$res='domains';$table=$t[$res]??null;if(!$table)return new WP_Error('not_found','Resource not found.',['status'=>404]);$where=$res==='domains'?'project_id=%s':'domain_id IN (SELECT id FROM '.$t['domains'].' WHERE project_id=%s)';
   $rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} WHERE {$where} ORDER BY 1 DESC LIMIT 200",$project),ARRAY_A);
   return self::ok(['items'=>$rows,'page'=>1,'per_page'=>200,'total'=>count($rows)]);
  }
