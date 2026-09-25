@@ -33,7 +33,12 @@ class Numpo_API {
   Numpo_Worker::schedule($job);
   return self::ok(['job_id'=>$job,'status'=>'queued','mode'=>$mode,'created_at'=>gmdate('c')],202);
  }
- public static function jobs(WP_REST_Request $r){return self::ok(['items'=>Numpo_DB::list_jobs((int)($r->get_param('limit')?:50))]);}
+ public static function jobs(WP_REST_Request $r){
+  $items=Numpo_DB::list_jobs((int)($r->get_param('limit')?:50));
+  foreach($items as &$item){$metrics=Numpo_DB::metrics($item['job_id']);$item['metrics']=$metrics?:[];}
+  unset($item);
+  return self::ok(['items'=>$items]);
+ }
  public static function get(WP_REST_Request $r){$job=Numpo_DB::get_job($r['id']);if(!$job)return new WP_Error('not_found','Job not found.',['status'=>404]);$job['metrics']=Numpo_DB::metrics($r['id']);return self::ok($job);}
  public static function candidates(WP_REST_Request $r){$per=min(200,max(1,(int)($r->get_param('per_page')?:50)));$page=max(1,(int)($r->get_param('page')?:1));[$rows,$total]=Numpo_DB::candidates_page($r['id'],$per,($page-1)*$per);return self::ok(['items'=>$rows,'page'=>$page,'per_page'=>$per,'total'=>$total]);}
  public static function cancel(WP_REST_Request $r){$job=Numpo_DB::get_job($r['id']);if(!$job)return new WP_Error('not_found','Job not found.',['status'=>404]);Numpo_DB::set_job_status($r['id'],'cancelled');return self::ok(['job_id'=>$r['id'],'status'=>'cancelled']);}
