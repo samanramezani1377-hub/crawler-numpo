@@ -1,31 +1,107 @@
 <?php
 if(!defined('ABSPATH')) exit;
+
 class Numpo_API {
  public static function init(){add_action('rest_api_init',[__CLASS__,'routes']);}
  public static function routes(){
   register_rest_route('numpo/v1','/jobs',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'create']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'get']]);
   register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/candidates',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'candidates']]);
-  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/cancel',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'cancel']]);register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/(?P<resource>domains|hosts|pages|technologies|contacts|business|social|classifications|probes)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'resource']]);register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/errors',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'errors']]);register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/csv',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'csv']]);
+  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/cancel',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'cancel']]);
+  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/(?P<resource>domains|hosts|pages|technologies|contacts|business|social|classifications|probes)',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'resource']]);
+  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/errors',['methods'=>'GET','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'errors']]);
+  register_rest_route('numpo/v1','/jobs/(?P<id>[A-Za-z0-9-]+)/csv',['methods'=>'POST','permission_callback'=>[__CLASS__,'permission'],'callback'=>[__CLASS__,'csv']]);
  }
  public static function permission(){return current_user_can('manage_options');}
+
+ private static function decode_engine_json($body,$status,$path){
+  $trim=trim((string)$body);
+  if($trim===''){
+   return new WP_Error('engine_empty_response','Numpo engine returned an empty response for '.$path.'. Check engine.log.',['status'=>502]);
+  }
+  $data=json_decode($trim,true);
+  if(json_last_error()!==JSON_ERROR_NONE||!is_array($data)){
+   $preview=function_exists('mb_substr')?mb_substr($trim,0,800):substr($trim,0,800);
+   $preview=wp_strip_all_tags($preview);
+   error_log('[Numpo] Invalid engine JSON HTTP '.$status.' '.$path.': '.$preview);
+   return new WP_Error('engine_invalid_json','Numpo engine returned invalid JSON for '.$path.'. HTTP '.$status.'. Check engine.log.',['status'=>502,'engine_status'=>$status,'body_preview'=>$preview]);
+  }
+  return $data;
+ }
+
  private static function call($method,$path,$body=null){
   if(Numpo_Settings::runtime_mode()!=='external'&&!Numpo_Runtime::ensure_started()){
    return new WP_Error('engine_unavailable','Numpo engine is not ready. Check Numpo Runtime diagnostics and engine.log.',['status'=>502]);
   }
-  $url=Numpo_Settings::engine_url().'/api/v1'.$path;$args=['method'=>$method,'timeout'=>30,'headers'=>['Accept'=>'application/json']];
+
+  $url=Numpo_Settings::engine_url().'/api/v1'.$path;
+  if($url==='/api/v1'.$path){
+   return new WP_Error('engine_url_missing','Numpo engine URL is not configured.',['status'=>500]);
+  }
+
+  $args=['method'=>$method,'timeout'=>30,'redirection'=>0,'headers'=>['Accept'=>'application/json']];
   if($k=Numpo_Settings::api_key())$args['headers']['Authorization']='Bearer '.$k;
-  if($body!==null){$args['headers']['Content-Type']='application/json';$args['body']=wp_json_encode($body);}
-  $r=wp_remote_request($url,$args);if(is_wp_error($r))return new WP_Error('engine_unavailable','Numpo engine connection failed: '.$r->get_error_message(),['status'=>502]);
-  $status=wp_remote_retrieve_response_code($r);$data=json_decode(wp_remote_retrieve_body($r),true);
-  if($status<200||$status>=300)return new WP_Error($data['error']['code']??'engine_error',$data['error']['message']??'Engine request failed',['status'=>$status]);
-  return new WP_REST_Response($data,$status);
+  if($body!==null){
+   $json=wp_json_encode($body);
+   if($json===false)return new WP_Error('request_json_encode_failed','Numpo could not encode the request as JSON.',['status'=>500]);
+   $args['headers']['Content-Type']='application/json; charset=utf-8';
+   $args['body']=$json;
+  }
+
+  $r=wp_remote_request($url,$args);
+  if(is_wp_error($r)){
+   return new WP_Error('engine_unavailable','Numpo engine connection failed: '.$r->get_error_message(),['status'=>502]);
+  }
+
+  $status=(int)wp_remote_retrieve_response_code($r);
+  $raw=(string)wp_remote_retrieve_body($r);
+  $decoded=self::decode_engine_json($raw,$status,$path);
+  if(is_wp_error($decoded))return $decoded;
+
+  if($status<200||$status>=300){
+   $code=is_array($decoded['error']??null)?($decoded['error']['code']??'engine_error'):'engine_error';
+   $message=is_array($decoded['error']??null)?($decoded['error']['message']??'Engine request failed'):('Engine request failed with HTTP '.$status);
+   $retry=is_array($decoded['error']??null)?(bool)($decoded['error']['retryable']??false):false;
+   return new WP_Error(sanitize_key((string)$code),(string)$message,['status'=>$status,'retryable'=>$retry]);
+  }
+
+  return new WP_REST_Response($decoded,$status);
  }
- public static function create(WP_REST_Request $r){$p=$r->get_json_params();if(!is_array($p))$p=$r->get_body_params();return self::call('POST','/discovery/jobs',$p);}
+
+ public static function create(WP_REST_Request $r){
+  $p=$r->get_json_params();
+  if(!is_array($p))$p=$r->get_body_params();
+  if(!is_array($p))return new WP_Error('invalid_request_body','Numpo received an invalid request body.',['status'=>400]);
+  return self::call('POST','/discovery/jobs',$p);
+ }
  public static function get(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']));}
  public static function candidates(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']).'/candidates');}
  public static function cancel(WP_REST_Request $r){return self::call('POST','/discovery/jobs/'.rawurlencode($r['id']).'/cancel');}
  public static function resource(WP_REST_Request $r){$path='/discovery/jobs/'.rawurlencode($r['id']).'/'.rawurlencode($r['resource']);return self::call('GET',$path);}
  public static function errors(WP_REST_Request $r){return self::call('GET','/discovery/jobs/'.rawurlencode($r['id']).'/errors');}
- public static function export_csv($id){$url=Numpo_Settings::engine_url().'/api/v1/discovery/jobs/'.rawurlencode($id).'/candidates.csv';$args=['method'=>'GET','timeout'=>60,'headers'=>['Accept'=>'text/csv']];if($k=Numpo_Settings::api_key())$args['headers']['Authorization']='Bearer '.$k;$res=wp_remote_request($url,$args);if(is_wp_error($res))return $res;$status=wp_remote_retrieve_response_code($res);if($status<200||$status>=300)return new WP_Error('engine_error','Engine export failed',['status'=>$status]);return new WP_REST_Response(wp_remote_retrieve_body($res),$status);} public static function csv(WP_REST_Request $r){$url=Numpo_Settings::engine_url().'/api/v1/discovery/jobs/'.rawurlencode($r['id']).'/csv';$args=['method'=>'POST','timeout'=>60,'headers'=>['Accept'=>'application/json','Content-Type'=>'text/csv'],'body'=>$r->get_body()];if($k=Numpo_Settings::api_key())$args['headers']['Authorization']='Bearer '.$k;$res=wp_remote_request($url,$args);if(is_wp_error($res))return new WP_Error('engine_unavailable',$res->get_error_message(),['status'=>502]);$status=wp_remote_retrieve_response_code($res);$body=wp_remote_retrieve_body($res);$data=json_decode($body,true);if($status<200||$status>=300)return new WP_Error($data['error']['code']??'engine_error',$data['error']['message']??'Engine request failed',['status'=>$status]);return new WP_REST_Response($data,$status);}
+
+ public static function export_csv($id){
+  $url=Numpo_Settings::engine_url().'/api/v1/discovery/jobs/'.rawurlencode($id).'/candidates.csv';
+  $args=['method'=>'GET','timeout'=>60,'headers'=>['Accept'=>'text/csv']];
+  if($k=Numpo_Settings::api_key())$args['headers']['Authorization']='Bearer '.$k;
+  $res=wp_remote_request($url,$args);
+  if(is_wp_error($res))return $res;
+  $status=wp_remote_retrieve_response_code($res);
+  if($status<200||$status>=300)return new WP_Error('engine_error','Engine export failed',['status'=>$status]);
+  return new WP_REST_Response(wp_remote_retrieve_body($res),$status);
+ }
+
+ public static function csv(WP_REST_Request $r){
+  $url=Numpo_Settings::engine_url().'/api/v1/discovery/jobs/'.rawurlencode($r['id']).'/csv';
+  $args=['method'=>'POST','timeout'=>60,'headers'=>['Accept'=>'application/json','Content-Type'=>'text/csv'],'body'=>$r->get_body()];
+  if($k=Numpo_Settings::api_key())$args['headers']['Authorization']='Bearer '.$k;
+  $res=wp_remote_request($url,$args);
+  if(is_wp_error($res))return new WP_Error('engine_unavailable',$res->get_error_message(),['status'=>502]);
+  $status=(int)wp_remote_retrieve_response_code($res);
+  $body=wp_remote_retrieve_body($res);
+  $data=self::decode_engine_json($body,$status,'/discovery/jobs/'.rawurlencode($r['id']).'/csv');
+  if(is_wp_error($data))return $data;
+  if($status<200||$status>=300)return new WP_Error($data['error']['code']??'engine_error',$data['error']['message']??'Engine request failed',['status'=>$status]);
+  return new WP_REST_Response($data,$status);
+ }
 }
