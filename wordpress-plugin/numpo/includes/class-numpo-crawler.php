@@ -30,6 +30,11 @@ class Numpo_Crawler {
   if(!filter_var($ip,FILTER_VALIDATE_IP))return true;
   return !filter_var($ip,FILTER_VALIDATE_IP,FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE);
  }
+ public static function probe($host,$timeout=10){
+  $out=['host'=>$host,'status'=>'inactive','http_status'=>0,'https_status'=>0,'response_time_ms'=>0];
+  foreach(['https','http'] as $scheme){$url=$scheme.'://'.$host.'/';if(!self::normalize_url($url))continue;$start=microtime(true);$r=wp_safe_remote_head($url,['timeout'=>max(1,$timeout),'redirection'=>3,'user-agent'=>'Numpo PHP Crawler/1.0']);$ms=(int)round((microtime(true)-$start)*1000);if(is_wp_error($r))continue;$code=(int)wp_remote_retrieve_response_code($r);$out[$scheme.'_status']=$code;$out['response_time_ms']=$ms;if($code>=200&&$code<500){$out['status']='active';$out['redirect_target']=(string)wp_remote_retrieve_header($r,'location');break;}}
+  return $out;
+ }
  public static function robots_allowed($url){
   $p=wp_parse_url($url);$host=strtolower((string)($p['host']??''));$scheme=strtolower((string)($p['scheme']??'https'));if($host==='')return false;
   $key='numpo_robots_'.md5($scheme.'://'.$host);$txt=get_transient($key);
