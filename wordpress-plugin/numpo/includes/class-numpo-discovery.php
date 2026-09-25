@@ -9,7 +9,7 @@ class Numpo_Discovery {
   foreach($urls as $url){
    $r=Numpo_Crawler::fetch($url,10,524288);if(is_wp_error($r))continue;
    $domain=Numpo_DB::ensure_domain($project,Numpo_Crawler::domain($host));
-   if(str_ends_with($url,'/robots.txt')){Numpo_DB::add_fact($job,$domain,'discovery','robots',$url,$url,$base,1,'robots.txt');self::robots_sitemaps($r['body'],$job,$project,$domain,$base);}
+   if(substr($url,-11)==='/robots.txt'){Numpo_DB::add_fact($job,$domain,'discovery','robots',$url,$url,$base,1,'robots.txt');self::robots_sitemaps($r['body'],$job,$project,$domain,$base);}
    else {Numpo_DB::add_fact($job,$domain,'discovery','sitemap',$url,$url,$base,1,'sitemap.xml');self::sitemap_urls($r['body'],$job,$domain,$base);}
   }
  }
