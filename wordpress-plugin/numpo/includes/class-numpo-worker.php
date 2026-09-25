@@ -5,6 +5,7 @@ class Numpo_Worker {
   add_filter('cron_schedules',[__CLASS__,'cron_schedules']);
   add_action('numpo_process_job',[__CLASS__,'process']);
   add_action('numpo_recover_jobs',[__CLASS__,'recover']);
+  add_action('numpo_discover_seed',[__CLASS__,'discover_seed']);
   if(!get_option('numpo_recover_schedule_v2')){ $old=wp_next_scheduled('numpo_recover_jobs'); if($old)wp_unschedule_event($old,'numpo_recover_jobs'); wp_schedule_event(time()+60,'numpo_five_minutes','numpo_recover_jobs'); update_option('numpo_recover_schedule_v2','1',false); } elseif(!wp_next_scheduled('numpo_recover_jobs'))wp_schedule_event(time()+60,'numpo_five_minutes','numpo_recover_jobs');
  }
  public static function cron_schedules($schedules){
@@ -17,6 +18,11 @@ class Numpo_Worker {
   if(!wp_next_scheduled('numpo_process_job',[$job]))return wp_schedule_single_event(time()+1,'numpo_process_job',[$job]);
   return true;
 }
+ public static function discover_seed($job,$project,$seed,$config=[]){
+  $row=Numpo_DB::get_job($job);if(!$row||in_array($row['status'],['cancelled','failed'],true))return;
+  Numpo_Discovery::seed_job($job,$project,$seed,is_array($config)?$config:[]);
+  Numpo_Worker::schedule($job);
+ }
  public static function recover(){
   global $wpdb;$t=Numpo_DB::tables();$jobs=$wpdb->get_col("SELECT id FROM {$t['jobs']} WHERE status IN ('running','queued') AND updated_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 15 MINUTE) LIMIT 20");foreach($jobs as $job){Numpo_DB::recover_stale_candidates($job,15);self::schedule($job);}
  }
