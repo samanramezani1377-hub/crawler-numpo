@@ -7,7 +7,7 @@ func(w *Worker)Run(ctx context.Context,job string)error{pages:=0;processed:=0
  maxPages,maxURLs,maxDepth,maxCandidates:=w.MaxPages,w.MaxURLs,w.MaxDepth,w.MaxCandidatesPerPage
  for pages<maxPages&&processed<maxURLs{
   if ctx.Err()!=nil{return ctx.Err()}
-  status,e:=w.Store.GetJobStatus(ctx,job);if e!=nil{return e};if status=="cancelled"||status=="completed"||status=="failed"{return nil}
+  status,e:=w.Store.GetJobStatus(ctx,job);if e!=nil{return e};if status=="cancelled"||status=="completed"||status=="failed"{return nil};if status=="paused"{timer:=time.NewTimer(2*time.Second);select{case <-ctx.Done():timer.Stop();return ctx.Err();case <-timer.C:};continue}
   id,raw,domain,_,depth,e:=w.Store.ClaimCandidate(ctx,job,w.Lease);if e!=nil{if errors.Is(e,context.Canceled)||errors.Is(e,context.DeadlineExceeded){return e};return w.Store.FinishJobIfEmpty(ctx,job)};processed++
   allowed,e:=w.Store.ConsumeURLBudget(ctx,job);if e!=nil{return e};if !allowed{_ = w.Store.SetCandidateStatus(ctx,id,"failed_final","job URL budget exhausted");return w.Store.FinishJobIfEmpty(ctx,job)}
   if e:=w.Store.AcquireDomainRateLimit(ctx,domain,w.DomainRateLimit);e!=nil{return e}
