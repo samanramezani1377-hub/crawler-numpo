@@ -40,10 +40,13 @@ class Numpo_Crawler {
   $key='numpo_robots_'.md5($scheme.'://'.$host);$txt=get_transient($key);
   if($txt===false){$r=wp_safe_remote_get($scheme.'://'.$host.'/robots.txt',['timeout'=>8,'redirection'=>2,'limit_response_size'=>262144,'user-agent'=>'Numpo PHP Crawler/1.0']);if(is_wp_error($r)){set_transient($key,['allow'=>true],300);return true;}$code=(int)wp_remote_retrieve_response_code($r);$txt=$code>=400?'':(string)wp_remote_retrieve_body($r);set_transient($key,$txt,3600);}
   if($txt==='')return true;
-  $path=(string)($p['path']??'/');$ua=false;$groups=[];$current=[];$active=false;
-  foreach(preg_split('/\\r?\
-/',$txt) as $line){$line=trim(preg_replace('/#.*$/','',$line));if($line==='')continue;$parts=explode(':',$line,2);if(count($parts)!==2)continue;$k=strtolower(trim($parts[0]));$v=trim($parts[1]);if($k==='user-agent'){$active=(strtolower($v)==='*'||stripos($v,'Numpo')!==false);$groups=[];continue;}if($active&&$k==='disallow'&&$v!=='')$groups[]=$v;}
-  foreach($groups as $rule){if($rule==='/'||strpos($path,$rule)===0)return false;}return true;
+  $path='/'.ltrim((string)($p['path']??'/'),'/');$ua='numpo';$rules=[];$matched=false;
+  foreach(preg_split('/\r?\n/',$txt) as $line){$line=trim(preg_replace('/#.*$/','',$line));if($line==='')continue;$parts=explode(':',$line,2);if(count($parts)!==2)continue;$k=strtolower(trim($parts[0]));$v=trim($parts[1]);
+   if($k==='user-agent'){ $matched=(strtolower($v)==='*'||stripos($v,'numpo')!==false);continue; }
+   if($matched&&($k==='allow'||$k==='disallow'))$rules[]=[$k,$v];
+  }
+  $best=-1;$allowed=true;foreach($rules as $rule){$pat=$rule[1];if($pat==='' )continue;$regex='~^'.str_replace(['\\*','\\$'],['.*','$'],$pat).'~i';if(@preg_match($regex,$path)!==1)continue;$len=strlen(str_replace('*','',$pat));if($len<$best)continue;$best=$len;$allowed=$rule[0]==='allow';}
+  return $allowed;
  }
  public static function rate_limit($url,$delay_ms=250){
   if($delay_ms<=0)return; $p=wp_parse_url($url);$host=strtolower((string)($p['host']??''));if($host==='')return;
