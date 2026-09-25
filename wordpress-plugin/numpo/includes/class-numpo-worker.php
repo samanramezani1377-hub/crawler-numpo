@@ -15,7 +15,7 @@ class Numpo_Worker {
  public static function schedule($job){
   $row=Numpo_DB::get_job($job);
   if(!$row||in_array($row['status'],['paused','cancelled','completed','failed'],true))return false;
-  if(!wp_next_scheduled('numpo_process_job',[$job]))return wp_schedule_single_event(time()+1,'numpo_process_job',[$job]);
+  if(!wp_next_scheduled('numpo_process_job',[$job]))return wp_schedule_single_event(time()+3,'numpo_process_job',[$job]);
   return true;
 }
  public static function discover_seed($job,$project,$seed,$config=[]){
