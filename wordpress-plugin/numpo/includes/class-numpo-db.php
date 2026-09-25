@@ -118,7 +118,19 @@ class Numpo_DB {
  public static function memory_row($project,$url){global $wpdb;$t=self::tables();$n=Numpo_Crawler::normalize_url($url);if(!$n)return null;return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['memory']} WHERE project_id=%s AND url_hash=%s",$project,hash('sha256',$n)),ARRAY_A);}
  public static function should_crawl($project,$url,$revisit_after=0){$r=self::memory_row($project,$url);if(!$r)return true;if(!$r['last_crawled_at'])return true;if($revisit_after<=0)return false;return empty($r['next_crawl_at'])||strtotime($r['next_crawl_at'])<=time();}
  public static function project_metrics($project){global $wpdb;$t=self::tables();return ['jobs'=>(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['jobs']} WHERE project_id=%s",$project)),'urls'=>(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['memory']} WHERE project_id=%s",$project)),'crawled_urls'=>(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['memory']} WHERE project_id=%s AND last_crawled_at IS NOT NULL",$project)),'domains'=>(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(DISTINCT normalized_domain) FROM {$t['memory']} WHERE project_id=%s",$project))];}
- public static function checkpoint($job,$current_url=''){global $wpdb;$t=self::tables();$wpdb->update($t['jobs'],['updated_at'=>self::now()],['id'=>$job]);}
+ public static function checkpoint($job,$current_url=''){
+  global $wpdb;$t=self::tables();$j=self::get_job($job);if(!$j)return false;
+  $cfg=is_array($j['config']??null)?$j['config']:[];$cfg['last_heartbeat']=self::now();if($current_url!=='')$cfg['current_url']=$current_url;
+  return $wpdb->update($t['jobs'],['config'=>wp_json_encode($cfg),'updated_at'=>self::now()],['id'=>$job])!==false;
+ }
+ public static function recover_stale_candidates($job,$minutes=15){
+  global $wpdb;$t=self::tables();$minutes=max(1,(int)$minutes);
+  return $wpdb->query($wpdb->prepare("UPDATE {$t['candidates']} SET status='failed_retryable',processing_started_at=NULL,next_attempt_at=UTC_TIMESTAMP(),last_error='Worker interrupted; candidate returned to queue.' WHERE job_id=%s AND status='processing' AND processing_started_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL %d MINUTE)",$job,$minutes));
+ }
+ public static function has_resumable_work($job){
+  global $wpdb;$t=self::tables();
+  return (int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['candidates']} WHERE job_id=%s AND (status IN ('new','failed_retryable') OR status='processing')",$job))>0;
+ }
  public static function add_candidate($job,$url,$source,$parent='',$priority=100,$confidence=1,$depth=0){
   global $wpdb;$t=self::tables();$n=Numpo_Crawler::normalize_url($url);if(!$n)return false;
   $parts=wp_parse_url($n);if(empty($parts['host']))return false;$host=strtolower($parts['host']);
