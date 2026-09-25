@@ -45,7 +45,7 @@ class Numpo_Crawler {
   }
   if(!$response)return new WP_Error('http_error','No HTTP response.');
   if($status>=300&&$status<400)return new WP_Error('redirect_limit','Too many redirects.');
-  $url=$current;$body=(string)wp_remote_retrieve_body($response);
+  $url=$current;$body=(string)wp_remote_retrieve_body($response);\n  $length=(int)wp_remote_retrieve_header($response,'content-length');if($length>$max_bytes)return new WP_Error('response_too_large','Response exceeds the configured size limit.');\n  if(strlen($body)>$max_bytes)return new WP_Error('response_too_large','Response exceeds the configured size limit.');
   $type=(string)wp_remote_retrieve_header($response,'content-type');
   if($status===429||$status>=500)return new WP_Error('http_'.$status,'HTTP '.$status);
   $title='';$links=[];
