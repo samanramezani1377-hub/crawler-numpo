@@ -27,7 +27,7 @@ class Numpo_Admin {
 
  <section id="np-start" class="np-section">
   <div class="np-heading"><div><h2>۱. شروع Crawl</h2><p>Job جدید را بساز، محدوده را مشخص کن و Crawl را شروع کن.</p></div><span class="np-badge">Job Setup</span></div>
-  <form id="numpo-form">
+  <form id="numpo-form" method="post" action="" onsubmit="return false;">
    <div class="np-grid">
     <div class="np-card np-span-8"><div class="np-section-label">ورودی Crawl</div>
      <label class="np-label">Project ID<input class="np-input" name="project_id" value="<?php echo esc_attr(Numpo_Settings::default_project());?>" required></label>
@@ -205,6 +205,7 @@ function selectJob(id){if(!id)return;activeJobId=String(id);localStorage.setItem
   const body=document.getElementById('np-tab-body');if(!body)return;
   try{const d=await api('/jobs/'+encodeURIComponent(j.job_id)+'/'+tab+'?per_page=50');const items=d.items||[];if(!items.length){body.innerHTML='<p class="np-muted">داده‌ای ثبت نشده.</p>';return}const keys=Object.keys(items[0]);body.innerHTML='<div class="np-table-wrap"><table class="np-table"><thead><tr>'+keys.map(k=>'<th>'+esc(k)+'</th>').join('')+'</tr></thead><tbody>'+items.map(x=>'<tr>'+keys.map(k=>'<td>'+esc(typeof x[k]==='object'?JSON.stringify(x[k]):x[k])+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'}catch(e){body.innerHTML='<p class="np-bad">'+esc(e.message)+'</p>'}
  }
+ // Never allow a normal browser form submission: Start must always stay on the Numpo admin page.
  form.addEventListener('submit',async e=>{
   e.preventDefault();
   const button=form.querySelector('button[type="submit"], button:not([type])'),oldText=button?button.textContent:'';
