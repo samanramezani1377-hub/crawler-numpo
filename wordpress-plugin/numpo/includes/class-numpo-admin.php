@@ -47,7 +47,7 @@ class Numpo_Admin {
   </form>
  </section>
 
- <section id="np-history" class="np-section"><div class="np-heading"><div><h2>۲. تاریخچه Jobها</h2><p>هیچ Crawl قبلی با شروع Job جدید حذف نمی‌شود. یک Job را انتخاب کن تا مانیتورینگ، نتایج و خروجی همان Job نمایش داده شود.</p></div><span class="np-badge">Persistent History</span></div><div class="np-card"><div id="numpo-job-history"><div class="np-muted">در حال بارگذاری Jobها…</div></div></div></section>
+ <section id="np-history" class="np-section"><div class="np-heading"><div><h2>۲. تاریخچه Jobها</h2><p>هیچ Crawl قبلی با شروع Job جدید حذف نمی‌شود. یک Job را انتخاب کن تا مانیتورینگ، نتایج و خروجی همان Job نمایش داده شود.</p></div><span class="np-badge">Persistent History</span><button type="button" class="np-btn np-ghost" id="np-all-project">همه نتایج Project</button></div><div class="np-card"><div id="numpo-job-history"><div class="np-muted">در حال بارگذاری Jobها…</div></div><div id="numpo-project-summary" class="np-project-summary"></div></div></section>
 
  <section id="np-monitor" class="np-section"><div class="np-heading"><div><h2>۳. مانیتورینگ و کنترل Job</h2><p>وضعیت لحظه‌ای و کنترل‌های Job انتخاب‌شده.</p></div><span class="np-badge">Live Monitor</span></div><div id="numpo-dashboard"></div></section>
 
@@ -89,7 +89,9 @@ class Numpo_Admin {
    historyRoot.querySelectorAll('.np-history-row').forEach(b=>b.onclick=()=>selectJob(b.dataset.jobId));
   }catch(e){historyRoot.innerHTML='<div class="notice notice-error"><p>'+esc(formatError(e))+'</p></div>';}
  }
- function selectJob(id){if(!id)return;activeJobId=String(id);localStorage.setItem('numpo_active_job_id',activeJobId);load(activeJobId);loadHistory();}
+ function selectJob(id){if(!id)return;activeJobId=String(id);localStorage.setItem('numpo_active_job_id',activeJobId);load(activeJobId);loadHistory();} 
+ async function loadProjectAggregate(){if(!activeJobId)return;try{const j=await fetch(restBase+'jobs/'+encodeURIComponent(activeJobId),{headers:{'X-WP-Nonce':restNonce}}).then(parseResponse);const p=await fetch(restBase+'project/'+encodeURIComponent(j.project_id)+'/metrics',{headers:{'X-WP-Nonce':restNonce}}).then(parseResponse);const box=document.getElementById('numpo-project-summary');if(box)box.innerHTML='<div class="np-card"><h3>مجموع Project · '+esc(j.project_id)+'</h3><div class="np-stats"><div><b>'+esc(p.jobs||0)+'</b><small>Jobs</small></div><div><b>'+esc(p.urls||0)+'</b><small>Unique URLs</small></div><div><b>'+esc(p.crawled_urls||0)+'</b><small>Crawled URLs</small></div><div><b>'+esc(p.domains||0)+'</b><small>Domains</small></div></div></div>';}catch(e){}} 
+ document.getElementById('np-all-project')?.addEventListener('click',loadProjectAggregate);
 
 
  function esc(v){return String(v??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]||m));}
