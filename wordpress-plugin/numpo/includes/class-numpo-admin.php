@@ -198,10 +198,6 @@ class Numpo_Admin {
  <p><button class="button button-primary">Save settings</button></p></form></div><?php }
  public static function save(){
   if(!current_user_can('manage_options')||!check_admin_referer('numpo_save'))wp_die('Forbidden');
-  update_option('numpo_runtime_mode',in_array($_POST['runtime_mode']??'bundled',['bundled','external'],true)?sanitize_text_field(wp_unslash($_POST['runtime_mode'])):'bundled');
-  update_option('numpo_engine_url',esc_url_raw(wp_unslash($_POST['engine_url']??'')));
-  update_option('numpo_api_key',sanitize_text_field(wp_unslash($_POST['api_key']??'')));
-  update_option('numpo_browser_binary',sanitize_text_field(wp_unslash($_POST['browser_binary']??'')));
   update_option('numpo_default_project',sanitize_text_field(wp_unslash($_POST['default_project']??'default')));
   update_option('numpo_search_url_template',esc_url_raw(wp_unslash($_POST['search_url_template']??'')));
   foreach(['max_pages'=>100,'max_urls'=>500,'max_depth'=>3,'max_candidates_per_page'=>50,'domain_rate_limit_ms'=>250,'probe_ttl_seconds'=>3600] as $k=>$d)update_option('numpo_'.$k,max(1,absint($_POST[$k]??$d)));
