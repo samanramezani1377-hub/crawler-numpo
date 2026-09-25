@@ -1,0 +1,153 @@
+<?php
+if(!defined('ABSPATH')) exit;
+
+class Numpo_DB {
+ private static $ready=false;
+ public static function tables(){
+  global $wpdb;
+  $p=$wpdb->prefix.'numpo_';
+  return [
+   'jobs'=>$p.'jobs','candidates'=>$p.'candidates','domains'=>$p.'domains','pages'=>$p.'pages',
+   'technologies'=>$p.'technologies','contacts'=>$p.'contacts','errors'=>$p.'errors'
+  ];
+ }
+ public static function install(){
+  if(self::$ready)return;
+  global $wpdb;
+  require_once ABSPATH.'wp-admin/includes/upgrade.php';
+  $t=self::tables();$charset=$wpdb->get_charset_collate();
+  $sql=[];
+  $sql[]="CREATE TABLE {$t['jobs']} (
+   id varchar(64) NOT NULL, project_id varchar(191) NOT NULL, mode varchar(20) NOT NULL,
+   status varchar(30) NOT NULL DEFAULT 'queued', config longtext NULL, max_pages int unsigned NOT NULL DEFAULT 100,
+   max_urls int unsigned NOT NULL DEFAULT 500, max_depth int unsigned NOT NULL DEFAULT 3,
+   max_candidates_per_page int unsigned NOT NULL DEFAULT 50, processed_pages int unsigned NOT NULL DEFAULT 0,
+   processed_urls int unsigned NOT NULL DEFAULT 0, created_at datetime NOT NULL, updated_at datetime NOT NULL,
+   started_at datetime NULL, completed_at datetime NULL, cancelled_at datetime NULL,
+   PRIMARY KEY(id), KEY status(status), KEY project_id(project_id)
+  ) $charset;";
+  $sql[]="CREATE TABLE {$t['candidates']} (
+   id varchar(64) NOT NULL, job_id varchar(64) NOT NULL, url text NOT NULL, normalized_url text NOT NULL,
+   normalized_domain varchar(191) NOT NULL, normalized_host varchar(191) NOT NULL, source_type varchar(50) NOT NULL,
+   parent_url text NULL, priority int NOT NULL DEFAULT 0, confidence double NOT NULL DEFAULT 0,
+   status varchar(30) NOT NULL DEFAULT 'new', attempt_count int unsigned NOT NULL DEFAULT 0,
+   last_error text NULL, depth int unsigned NOT NULL DEFAULT 0, discovered_at datetime NOT NULL,
+   next_attempt_at datetime NULL, completed_at datetime NULL, processing_started_at datetime NULL,
+   PRIMARY KEY(id), KEY job_status(job_id,status), KEY job_url(job_id(32),normalized_domain(100))
+  ) $charset;";
+  $sql[]="CREATE TABLE {$t['domains']} (
+   id varchar(64) NOT NULL, project_id varchar(191) NOT NULL, normalized_domain varchar(191) NOT NULL,
+   created_at datetime NOT NULL, updated_at datetime NOT NULL, crawl_pages int unsigned NOT NULL DEFAULT 0,
+   PRIMARY KEY(id), UNIQUE KEY project_domain(project_id,normalized_domain)
+  ) $charset;";
+  $sql[]="CREATE TABLE {$t['pages']} (
+   id varchar(64) NOT NULL, domain_id varchar(64) NOT NULL, normalized_url text NOT NULL, url_hash char(64) NOT NULL,
+   status int NOT NULL DEFAULT 0, title text NULL, content_type varchar(191) NULL, depth int unsigned NOT NULL DEFAULT 0,
+   fetched_at datetime NULL, PRIMARY KEY(id), UNIQUE KEY domain_url(domain_id,url_hash)
+  ) $charset;";
+  $sql[]="CREATE TABLE {$t['technologies']} (
+   id varchar(64) NOT NULL, domain_id varchar(64) NOT NULL, name varchar(191) NOT NULL, version varchar(100) NOT NULL DEFAULT '',
+   confidence double NOT NULL DEFAULT 0, evidence longtext NULL, source_url text NULL, detected_at datetime NOT NULL,
+   PRIMARY KEY(id), UNIQUE KEY domain_name(domain_id,name)
+  ) $charset;";
+  $sql[]="CREATE TABLE {$t['contacts']} (
+   id varchar(64) NOT NULL, domain_id varchar(64) NOT NULL, type varchar(30) NOT NULL, value text NOT NULL,
+   normalized_value varchar(191) NOT NULL, source_url text NULL, detected_at datetime NOT NULL,
+   PRIMARY KEY(id), UNIQUE KEY domain_contact(domain_id,type,normalized_value)
+  ) $charset;";
+  $sql[]="CREATE TABLE {$t['errors']} (
+   id varchar(64) NOT NULL, job_id varchar(64) NOT NULL, category varchar(50) NOT NULL, code varchar(100) NOT NULL DEFAULT '',
+   message text NOT NULL, retryable tinyint(1) NOT NULL DEFAULT 0, attempt int unsigned NOT NULL DEFAULT 0,
+   created_at datetime NOT NULL, PRIMARY KEY(id), KEY job_created(job_id,created_at)
+  ) $charset;";
+  foreach($sql as $statement) dbDelta($statement);
+  self::$ready=true;
+ }
+ public static function id(){return wp_generate_uuid4();}
+ public static function now(){return current_time('mysql',true);}
+ public static function create_job($data){
+  global $wpdb;$t=self::tables();$now=self::now();
+  $cfg=$data['config']??[];
+  $ok=$wpdb->insert($t['jobs'],[
+   'id'=>$data['id'],'project_id'=>$data['project_id'],'mode'=>$data['mode'],'status'=>'queued',
+   'config'=>wp_json_encode($cfg),'max_pages'=>max(1,(int)($cfg['max_pages']??100)),
+   'max_urls'=>max(1,(int)($cfg['max_urls']??500)),'max_depth'=>max(0,(int)($cfg['max_depth']??3)),
+   'max_candidates_per_page'=>max(1,(int)($cfg['max_candidates_per_page']??50)),
+   'created_at'=>$now,'updated_at'=>$now
+  ]);
+  return $ok!==false;
+ }
+ public static function get_job($id){
+  global $wpdb;$t=self::tables();$row=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['jobs']} WHERE id=%s",$id),ARRAY_A);
+  if(!$row)return null;$row['config']=$row['config']?json_decode($row['config'],true):[];
+  $row['job_id']=$row['id'];unset($row['id']);return $row;
+ }
+ public static function set_job_status($id,$status){
+  global $wpdb;$t=self::tables();$data=['status'=>$status,'updated_at'=>self::now()];
+  if($status==='running')$data['started_at']=self::now();
+  if($status==='completed')$data['completed_at']=self::now();
+  if($status==='cancelled')$data['cancelled_at']=self::now();
+  return $wpdb->update($t['jobs'],$data,['id'=>$id])!==false;
+ }
+ public static function add_candidate($job,$url,$source,$parent='',$priority=100,$confidence=1,$depth=0){
+  global $wpdb;$t=self::tables();$n=Numpo_Crawler::normalize_url($url);if(!$n)return false;
+  $parts=wp_parse_url($n);if(empty($parts['host']))return false;$host=strtolower($parts['host']);
+  $domain=Numpo_Crawler::domain($host);$exists=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$t['candidates']} WHERE job_id=%s AND normalized_url=%s",$job,$n));
+  if($exists)return true;
+  return $wpdb->insert($t['candidates'],['id'=>self::id(),'job_id'=>$job,'url'=>$url,'normalized_url'=>$n,'normalized_domain'=>$domain,'normalized_host'=>$host,'source_type'=>$source,'parent_url'=>$parent,'priority'=>$priority,'confidence'=>$confidence,'status'=>'new','depth'=>max(0,$depth),'discovered_at'=>self::now(),'next_attempt_at'=>self::now()])!==false;
+ }
+ public static function next_candidate($job){
+  global $wpdb;$t=self::tables();
+  return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['candidates']} WHERE job_id=%s AND ((status IN ('new','failed_retryable') AND (next_attempt_at IS NULL OR next_attempt_at<=UTC_TIMESTAMP())) OR (status='processing' AND processing_started_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 MINUTE))) ORDER BY priority DESC,discovered_at ASC LIMIT 1",$job),ARRAY_A);
+ }
+ public static function mark_processing($id){
+  global $wpdb;$t=self::tables();
+  return $wpdb->query($wpdb->prepare("UPDATE {$t['candidates']} SET status='processing',attempt_count=attempt_count+1,processing_started_at=UTC_TIMESTAMP() WHERE id=%s AND status IN ('new','failed_retryable')",$id))>0;
+ }
+ public static function finish_candidate($id,$status,$error=''){
+  global $wpdb;$t=self::tables();return $wpdb->update($t['candidates'],['status'=>$status,'last_error'=>$error,'completed_at'=>in_array($status,['completed','failed_final'],true)?self::now():null],['id'=>$id])!==false;
+ }
+ public static function retry_candidate($row,$error){
+  global $wpdb;$t=self::tables();$attempt=(int)$row['attempt_count'];
+  if($attempt>=3){self::finish_candidate($row['id'],'failed_final',$error);self::record_error($row['job_id'],'crawl','retry_exhausted',$error,false,$attempt);return;}
+  $delay=min(30,pow(2,max(0,$attempt-1)));$when=gmdate('Y-m-d H:i:s',time()+$delay);
+  $wpdb->update($t['candidates'],['status'=>'failed_retryable','last_error'=>$error,'next_attempt_at'=>$when,'processing_started_at'=>null],['id'=>$row['id']]);
+ }
+ public static function record_error($job,$category,$code,$message,$retryable=false,$attempt=0){
+  global $wpdb;$t=self::tables();return $wpdb->insert($t['errors'],['id'=>self::id(),'job_id'=>$job,'category'=>$category,'code'=>$code,'message'=>$message,'retryable'=>$retryable?1:0,'attempt'=>$attempt,'created_at'=>self::now()])!==false;
+ }
+ public static function increment_job($job,$field){
+  global $wpdb;$t=self::tables();if(!in_array($field,['processed_pages','processed_urls'],true))return false;
+  return $wpdb->query($wpdb->prepare("UPDATE {$t['jobs']} SET {$field}={$field}+1,updated_at=UTC_TIMESTAMP() WHERE id=%s",$job))>0;
+ }
+ public static function ensure_domain($project,$domain){
+  global $wpdb;$t=self::tables();$id=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$t['domains']} WHERE project_id=%s AND normalized_domain=%s",$project,$domain));
+  if($id)return $id;$id=self::id();$wpdb->insert($t['domains'],['id'=>$id,'project_id'=>$project,'normalized_domain'=>$domain,'created_at'=>self::now(),'updated_at'=>self::now()]);return $id;
+ }
+ public static function add_page($domain,$url,$status,$title,$type,$depth){
+  global $wpdb;$t=self::tables();$hash=hash('sha256',$url);$id=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$t['pages']} WHERE domain_id=%s AND url_hash=%s",$domain,$hash));
+  $data=['status'=>$status,'title'=>$title,'content_type'=>$type,'depth'=>$depth,'fetched_at'=>self::now()];
+  if($id){$wpdb->update($t['pages'],$data,['id'=>$id]);return $id;}
+  $id=self::id();$data=array_merge($data,['id'=>$id,'domain_id'=>$domain,'normalized_url'=>$url,'url_hash'=>$hash]);$wpdb->insert($t['pages'],$data);return $id;
+ }
+ public static function add_technology($domain,$name,$confidence,$evidence,$source){
+  global $wpdb;$t=self::tables();$id=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$t['technologies']} WHERE domain_id=%s AND name=%s",$domain,$name));$data=['version'=>'','confidence'=>$confidence,'evidence'=>wp_json_encode($evidence),'source_url'=>$source,'detected_at'=>self::now()];
+  if($id)return $wpdb->update($t['technologies'],$data,['id'=>$id])!==false;$data=array_merge($data,['id'=>self::id(),'domain_id'=>$domain,'name'=>$name]);return $wpdb->insert($t['technologies'],$data)!==false;
+ }
+ public static function add_contact($domain,$type,$value,$normalized,$source){
+  global $wpdb;$t=self::tables();$exists=$wpdb->get_var($wpdb->prepare("SELECT id FROM {$t['contacts']} WHERE domain_id=%s AND type=%s AND normalized_value=%s",$domain,$type,$normalized));if($exists)return true;
+  return $wpdb->insert($t['contacts'],['id'=>self::id(),'domain_id'=>$domain,'type'=>$type,'value'=>$value,'normalized_value'=>$normalized,'source_url'=>$source,'detected_at'=>self::now()])!==false;
+ }
+ public static function candidates_page($job,$limit=50,$offset=0){
+  global $wpdb;$t=self::tables();$limit=min(200,max(1,(int)$limit));$offset=max(0,(int)$offset);
+  $rows=$wpdb->get_results($wpdb->prepare("SELECT id,url,normalized_url,normalized_domain,normalized_host,source_type,parent_url,priority,confidence,status,attempt_count,last_error,discovered_at FROM {$t['candidates']} WHERE job_id=%s ORDER BY priority DESC,discovered_at ASC LIMIT %d OFFSET %d",$job,$limit,$offset),ARRAY_A);
+  $total=(int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['candidates']} WHERE job_id=%s",$job));return [$rows,$total];
+ }
+ public static function errors($job,$limit=50,$offset=0){
+  global $wpdb;$t=self::tables();$limit=min(200,max(1,(int)$limit));$offset=max(0,(int)$offset);
+  return $wpdb->get_results($wpdb->prepare("SELECT category,code,message,retryable,attempt,created_at FROM {$t['errors']} WHERE job_id=%s ORDER BY created_at DESC LIMIT %d OFFSET %d",$job,$limit,$offset),ARRAY_A);
+ }
+ public static function has_pending($job){
+  global $wpdb;$t=self::tables();return (int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['candidates']} WHERE job_id=%s AND status IN ('new','processing','failed_retryable')",$job))>0;
+ }
+}
